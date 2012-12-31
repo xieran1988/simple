@@ -1,0 +1,5 @@
+*.o
+decode
+simple
+*.swp
+*.so
