@@ -1,7 +1,6 @@
 #pragma once 
 
 void *mp4_open(char *fname);
-void mp4_data(void **yuv, int *linesize);
 float mp4_dur(void *h);
 float mp4_pos(void *h);
 int mp4_height(void *h);

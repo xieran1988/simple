@@ -10,81 +10,12 @@
 
 static int inited;
 
-/*
-void poll_frame_and_output_jpg(AVFrame *frm, AVStream *st, char *path) {
-	//H264Context *h = st->codec->priv_data;
-	int n = 0;
-	for (n = 0; n < 1060; n++) {
-		AVPacket pkt;
-		int i = av_read_frame(ifc, &pkt);
-//		printf("read %d, pkt: size=%d index=%d\n", 
-//				i, pkt.size, pkt.stream_index);
-		if (pkt.stream_index != st->index)
-			continue;
-		int got_pic; 
-		i = avcodec_decode_video2(st->codec, frm, &got_pic, &pkt);
-		//printf("decode %d, w=%d h=%d\n", i, frm->width, frm->height);
-		if (got_pic && frm->key_frame)
-			break;
-	}
-
-}
-
-static int pick_count = 30;
-static char *output_path;
-
-void pick_i_frames()
-{
-	AVStream *st = st_h264;
-	int i, r;
-
-	AVFrame *frm = avcodec_alloc_frame();
-
-//	printf("nb_index_entries: %d\n", st->nb_index_entries); 
-	for (i = 0; i < st->nb_index_entries; i++) {
-		AVIndexEntry *ie = &st->index_entries[i];
-//		printf("#%d pos=%lld ts=%lld\n", i, ie->pos, ie->timestamp);
-	}
-
-	int nr = st->nb_index_entries;
-	int step = nr / pick_count;
-	int ti, seq = 0;
-
-	for (ti = 0; ti < nr; ti += step) {
-		int64_t ts = st->index_entries[ti].timestamp;
-
-		seq++;
-
-	//	printf("ts=%lld\n", ts);
-		i = av_seek_frame(ifc, st->index, ts, 0);
-		if (i == -1)
-			break;
-//		printf("seek %d, index=%d\n", i, st->index);
-
-		//	i = avio_seek(ifc->pb, st->index_entries[1033].pos, SEEK_SET);
-		//	printf("io_seek %d\n", i);
-		char path[128];
-		sprintf(path, "%s/%d.jpg", output_path, seq);
-
-		printf("%s ", path);
-		poll_frame_and_output_jpg(frm, st, path);
-	}
-	printf("\n");
-}
-
-static void help() {
-	exit(0);
-}
-*/
-
 typedef struct {
 	AVFormatContext *ifc;
 	AVStream *st_h264;
 	float dur;
 	float tm_base;
 	AVFrame *frm;
-	AVPacket pkt;
-	int hasdata;
 } mp4_t;
 
 #define M(_m) ((mp4_t *)_m)
@@ -145,7 +76,6 @@ void *mp4_open(char *fname)
 			m->st_h264->time_base.den);
 	
 	m->frm = avcodec_alloc_frame();
-	mp4_read_frame(m, NULL, NULL);
 
 	return m;
 }
@@ -182,15 +112,22 @@ static int _decode_h264_frame(mp4_t *m)
 	while (n--) {
 		AVPacket pkt;
 		i = av_read_frame(m->ifc, &pkt);
-		if (i)
+		if (i) {
+			av_free_packet(&pkt);
 			return 1;
-		if (pkt.stream_index != m->st_h264->index)
+		}
+		if (pkt.stream_index != m->st_h264->index) {
+			av_free_packet(&pkt);
 			continue;
+		}
 		i = avcodec_decode_video2(m->st_h264->codec, m->frm, &gotpic, &pkt);
 		dbp(1, "	idx=%d, decode %d, gotpic=%d key=%d\n", 
 				pkt.stream_index, i, gotpic, m->frm->key_frame);
-		if (gotpic) 
+		if (gotpic) {
+			av_free_packet(&pkt);
 			return 0;
+		}
+		av_free_packet(&pkt);
 	}
 	return 1;
 }
@@ -221,6 +158,7 @@ void mp4_seek_precise(void *_m, float pos)
 	while (n--) {
 		if (mp4_pos(m) >= pos) 
 			return ;
+		_decode_h264_frame(m);
 	}
 }
 
@@ -262,19 +200,24 @@ static _dump_yuv(mp4_t *m, char *prefix)
 
 int main(int argc, char *argv[])
 {
-	void *m;
+	void *m[4];
 	void *data[3];
 	int linesize[3];
+	int i;
 
-	m = mp4_open("/Users/xieran/1.mp4");
-
-	mp4_seek(m, 10.0);
-	printf("pos %f\n", mp4_pos(m));
-
-	mp4_seek(m, 3.0);
-	printf("pos %f\n", mp4_pos(m));
-
-	_dump_yuv((mp4_t *)m, "Image");
+	for (i = 0; i < 4; i++) {
+		char path[256];
+		sprintf(path, "/vid/%d.mp4", i+1);
+		m[i] = mp4_open(path);
+	}
+	
+	while (1) {
+		for (i = 0; i < 4; i++) {
+			int r = mp4_read_frame(m[i], data, linesize);
+			if (r)
+				mp4_seek(m[i], 0);
+		}
+	}
 
 	return 0;
 }

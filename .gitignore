@@ -3,3 +3,8 @@ decode
 simple
 *.swp
 *.so
+encode
+fbo
+minifbo
+stencil
+test1
