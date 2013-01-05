@@ -1,6 +1,7 @@
 
 LIB = -framework GLUT -framework OpenGL -framework Cocoa \
-			/Users/xieran/freetype-gl-read-only/freetype-gl.a
+			/Users/xieran/freetype-gl-read-only/freetype-gl.a \
+			`freetype-config --libs`
 AVLIB := \
 		/usr/lib/libav*.a \
 		/usr/lib/libbz2.dylib \
@@ -20,20 +21,16 @@ stencil: stencil.o
 	gcc -o $@ $< $(LIB)
 
 %.o: %.c
-	gcc -c -I /Users/xieran/freetype-gl-read-only/ -o $@ $<
+	gcc -c  -o $@ $<
 
 fbo: fbo.o
 	gcc -o fbo fbo.o $(LIB) 
 
-simple: simple.c decode.so
-	gcc -o simple simple.c $(LIB) decode.so
-	./simple
+simple: simple.c decode.so ft.so
+	gcc -I /Users/xieran/freetype-gl-read-only/ -o simple simple.c $(LIB) decode.so ft.so
 
 decode: decode.o
 	gcc -o $@ $< ${AVLIB}
-
-decode_test: decode
-	./$<
 
 decode.o: decode.c decode.h
 
@@ -45,14 +42,31 @@ encode: encode.o
 
 encode.o: encode.c encode.h
 
-.PHONY: test1
+encode.so: encode.o
+	gcc -shared -fPIC -o $@ $< ${AVLIB}
+
+ft.o: ft.c
+	gcc `freetype-config --cflags` -c -o $@ $< 
+
+ft.so: ft.o
+	gcc -shared -fPIC -o $@ $< ${LIB}
+
+.PHONY: test1 testfont
+
+testdecode: decode
+	./$<
 
 test1: test1.o encode.so decode.so
 	gcc -o $@ $^ ${AVLIB}
 	./$@
 
-encode.so: encode.o
-	gcc -shared -fPIC -o $@ $< ${AVLIB}
+testsimple: simple
+	./simple
+
+testfont:
+	gcc `freetype-config --cflags` -DTEST -o testfont ft.c ${LIB}
+	./testfont
 
 clean:
-	rm *.o
+	rm -rf *.o *.so simple encode decode fbo test1
+

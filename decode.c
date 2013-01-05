@@ -20,10 +20,15 @@ typedef struct {
 
 #define M(_m) ((mp4_t *)_m)
 
-#if 0
+static int debug;
+
+#if 1
 #define dbp(lev, ...) 
 #else
-#define dbp(lev, ...) printf("mp4: " __VA_ARGS__)
+#define dbp(lev, ...) { \
+	if (debug) \
+		printf("mp4: " __VA_ARGS__);	\
+	}
 #endif
 
 void *mp4_open(char *fname)

@@ -8,6 +8,9 @@
 
 #include "decode.h"
 
+#include <freetype-gl.h>
+#include <vertex-buffer.h>
+
 GLuint t1, t2, t3;
 GLuint t1loc, t2loc, t3loc;
 GLuint program;
@@ -15,7 +18,7 @@ extern const GLchar* source;
 
 int win_w, win_h;
 
-GLuint fb, fbt1, fbt2;
+GLuint fb, fbt1, fbt2, masktex, tex2, texstr;
 
 static void *mp4[4];
 void *data[3];
@@ -24,6 +27,14 @@ void *alldata[4][3];
 int alllinesize[4][3];
 float allpos[4];
 float allstart[4];
+
+typedef struct {
+    float x, y, z;    // position
+    float s, t;       // texture
+    float r, g, b, a; // color
+} vertex_t;
+vertex_buffer_t *buffer;
+texture_atlas_t *atlas;
 
 #define VIDEO_H 360
 #define VIDEO_W 640
@@ -77,28 +88,55 @@ void loadShader() {
 	t1loc = glGetUniformLocation(program, "tex1");
 	t2loc = glGetUniformLocation(program, "tex2");
 	t3loc = glGetUniformLocation(program, "tex3");
-
-	/*
-	glGenFramebuffersEXT(1, &fb);
-	glGenTextures(1, &fbt1);
-
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fb);
-		glBindTexture(GL_TEXTURE_2D, fbt1);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 640, 360, 0, GL_RGBA, GL_INT, NULL);
-		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, 
-				GL_TEXTURE_2D, fbt1, 0);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-	*/
 }
 
-
-void init()
+void init_tex()
 {
-	glClearColor(0.0, 0.0, 0.0, 0.0);
-	glEnable(GL_DEPTH_TEST);
-	glShadeModel(GL_FLAT);
+	uint8_t data[][4] = {
+		{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0},
+		{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0},
+		{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}
+	};
 
+	glGenTextures(1, &masktex);    
+	glBindTexture(GL_TEXTURE_2D, masktex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 3, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+	uint8_t data2[][4] = {
+		{0,0,0}, {0,0,0}, {0,0,0,64}, {0,0,0,128},
+		{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0},
+		{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}
+	};
+
+	uint8_t data3[] = {
+		0,0,64,128,
+		0,0,192,0,
+		0,0,0,0,
+	};
+
+	glGenTextures(1, &tex2);    
+	glBindTexture(GL_TEXTURE_2D, tex2);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 4, 3, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data3);
+
+	glGenTextures(1, &texstr);
+	glBindTexture(GL_TEXTURE_2D, texstr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	ft_fill_texture(L"测试一个句子", 50);
+
+	int w, h;
+	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+	printf("strtex: %dx%d\n", w, h);
+}
+
+void init_mp4() 
+{
 	int i;
 	for (i = 0; i < 4; i++) {
 		char path[256];
@@ -113,6 +151,18 @@ void init()
 		t2 = makeDataTex(data[1], linesize[1], h/2);
 		t3 = makeDataTex(data[2], linesize[2], h/2);
 	}
+}
+
+void init()
+{
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_TEXTURE_2D);
+	glShadeModel(GL_FLAT);
+	glDepthRange(0, 1);
+	
+	init_tex();
+	init_mp4();
 
 	loadShader();
 }
@@ -135,37 +185,29 @@ const GLchar* source = STRINGIFY(
 	}
 );
 
+static void dump(char *name, void *data, int len)
+{
+	FILE *fp = fopen("/tmp/t", "wb+");
+	fwrite(data, 1, len, fp);
+	fclose(fp);
+	rename("/tmp/t", name);
+}
 
-void draw_quads(float x, float y, float w, float h, float cw)
+void draw_quads(float x, float y, float z, float w, float h, float cw)
 {
 	glBegin(GL_QUADS);
-		//lower left
-		glTexCoord2f(0, 0);
-		glVertex2f(x, y-h);
-		//upper left
-		glTexCoord2f(0, 1);
-		glVertex2f(x, y);
-		//upper right
-		glTexCoord2f(cw, 1);
-		glVertex2f(x+w, y);
-		//lower right
-		glTexCoord2f(cw, 0);
-		glVertex2f(x+w, y-h);
+		glTexCoord2f(0, 0); glVertex3f(x, y-h, z);
+		glTexCoord2f(0, 1); glVertex3f(x, y, z);
+		glTexCoord2f(cw, 1); glVertex3f(x+w, y, z);
+		glTexCoord2f(cw, 0); glVertex3f(x+w, y-h, z);
 	glEnd();
 }
 
-void draw_video(float x, float y, float w, float h) 
+void draw_video(float x, float y, float z, float w, float h) 
 {
-	//glMatrixMode(GL_PROJECTION);
-//	glLoadIdentity();
-//	gluPerspective(45, 1, 1, 10);
-
-//	glMatrixMode(GL_MODELVIEW);
-//	glLoadIdentity();
-	//glTranslatef(0,0,-1);
-	//
-	
 	float cw = VIDEO_W*1./linesize[0];
+
+	glLoadIdentity();
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, t1);
@@ -186,16 +228,18 @@ void draw_video(float x, float y, float w, float h)
 	glUniform1i(t1loc, 0);
 	glUniform1i(t2loc, 1);
 	glUniform1i(t3loc, 2);
-	draw_quads(x, y, w, h, cw);
+	draw_quads(x, y, z, w, h, cw);
 	glUseProgram(0);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void display()
 {
 	glViewport(0, 0, win_w, win_h);
-	glClearColor(1,1,1,0);
+	glClearColor(1,1,1,1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glLoadIdentity();
 
 	int i;
 	float pos[4][2] = {
@@ -204,20 +248,52 @@ void display()
 	for (i = 0; i < 4; i++) { 
 		memcpy(data, alldata[i], sizeof(alldata[i]));
 		memcpy(linesize, alllinesize[i], sizeof(alllinesize[i]));
-		draw_video(pos[i][0], pos[i][1], 1, 1);
+		//draw_video(pos[i][0], pos[i][1], 0, 1, 1);
 	}
+	draw_video(-0.5, 0.5, 0.0, 1, 1);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ZERO);
+
+//	glEnable(GL_ALPHA_TEST);
+//	glAlphaFunc(GL_GREATER, 0.0);
+
+	glLoadIdentity();
+  glBindTexture(GL_TEXTURE_2D, texstr);
+
+	float tw, th, w, h, x, y, z;
+	glGetTexLevelParameterfv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &tw);
+	glGetTexLevelParameterfv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &th);
+	float d2 = tw/th;
+	float d1 = win_w*1./win_h;
+	x = -0.3; y = 0; z = 0.1; h = 0.1; w = h*d2/d1;
+	glBegin(GL_QUADS);
+		glTexCoord2f(0, 1); glVertex3f(x, y-h, z);
+		glTexCoord2f(0, 0); glVertex3f(x, y, z);
+		glTexCoord2f(1, 0); glVertex3f(x+w, y, z);
+		glTexCoord2f(1, 1); glVertex3f(x+w, y-h, z);
+	glEnd();
+
+	glDisable(GL_BLEND);
+	glDisable(GL_ALPHA_TEST);
 
 	/*
-//	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fb);
-//	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, fbt1);
-	glViewport(0, 0, VIDEO_W, VIDEO_H);
-	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+  glBindTexture(GL_TEXTURE_2D, masktex);
+	draw_quads(0, 0, 0.1, 1, 1, 1);
 	*/
+
+
+	//glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
+	//glColor4f(1,1,1,1);
+	//glScalef(1./50, 1./50, 1./50);
+	//vertex_buffer_render( buffer, GL_TRIANGLES, "vtc" );
+	//glDisable(GL_BLEND);
+	//glDisable(GL_TEXTURE_2D);
+//	static char buf[1024];
+//	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+//	dump("/tmp/mytex", buf, 4*3*4);
+
 
 	glutSwapBuffers();
 }
@@ -248,6 +324,7 @@ void reshape(int w, int h)
 	glViewport(0, 0, w, h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
+	gluOrtho2D(-0.5, 0.5, -0.5, 0.5);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	win_w = w;
@@ -275,6 +352,7 @@ int main(int argc, char **argv)
 
 	glutInitWindowSize(win_w, win_h);
 	glutInitWindowPosition(0, 0);
+
 
 	glutCreateWindow("Pixies");
 
