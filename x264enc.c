@@ -1,27 +1,29 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <x264.h>
 
 typedef struct {
 	x264_param_t param;
 	x264_t *x;
 	int64_t pts;
-} h264_t ;
+} x264enc_t ;
 
-#define H(_m) ((h264_t *)_m)
+#define H(_m) ((x264enc_t *)_m)
 
-#if 0
-#define dbp(lev, ...) 
-#else
-#define dbp(lev, ...) printf("h264: " __VA_ARGS__)
-#endif
+static int debug;
 
-void *h264_new(int width, int height)
+#define dbp(lev, ...) { \
+	if (debug) \
+		printf("x264enc: " __VA_ARGS__);	\
+}
+
+void *x264enc_new(int width, int height)
 {
-	h264_t *h = malloc(sizeof(h264_t));
+	x264enc_t *h = (x264enc_t *)malloc(sizeof(x264enc_t));
 
-	memset(h, 0, sizeof(h264_t));
+	memset(h, 0, sizeof(x264enc_t));
 	x264_param_default_preset(&h->param, "ultrafast", "");
 	h->param.i_log_level = X264_LOG_DEBUG;
 	h->param.i_width = width;
@@ -34,9 +36,9 @@ void *h264_new(int width, int height)
 	return h;
 }
 
-void h264_encode(void *_h, void **data, int *linesize, void **buf, int *size)
+void x264enc_encode(void *_h, void **data, int *linesize, void **buf, int *size)
 {
-	h264_t *h = H(_h);
+	x264enc_t *h = H(_h);
 	x264_picture_t picin, picout;
 	int r;
 
@@ -70,4 +72,9 @@ void h264_encode(void *_h, void **data, int *linesize, void **buf, int *size)
 	*size = r;
 }
 
+int main()
+{
+	
+	return 0;
+}
 

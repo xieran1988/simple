@@ -1,8 +1,9 @@
 
-LIB = -framework GLUT -framework OpenGL -framework Cocoa \
+
+GLLIB_MAC = -framework GLUT -framework OpenGL -framework Cocoa \
 			/Users/xieran/freetype-gl-read-only/freetype-gl.a \
 			`freetype-config --libs`
-AVLIB := \
+AVLIB_MAC := \
 		/usr/lib/libav*.a \
 		/usr/lib/libbz2.dylib \
 		/usr/lib/libz.dylib \
@@ -11,62 +12,26 @@ AVLIB := \
 		-framework VideoDecodeAcceleration \
 		-framework QuartzCore
 
-all: fbo 
-	./$<
+AVLIB_LINUX := \
+	/usr/lib/x86_64-linux-gnu/libav*.so \
+	/usr/lib/x86_64-linux-gnu/libx264.so \
+	-lm -lz -lbz2 -lpthread 
 
-minifbo: minifbo.o
-	gcc -o $@ $< $(LIB)
+AVLIB := ${AVLIB_LINUX}
 
-stencil: stencil.o
-	gcc -o $@ $< $(LIB)
+TESTS := mp4dec_test x264enc_test
+
+all: ${TESTS}
 
 %.o: %.c
 	gcc -c  -o $@ $<
 
-fbo: fbo.o
-	gcc -o fbo fbo.o $(LIB) 
-
-simple: simple.c decode.so ft.so
-	gcc -I /Users/xieran/freetype-gl-read-only/ -o simple simple.c $(LIB) decode.so ft.so
-
-decode: decode.o
+mp4dec_test: mp4dec.o
 	gcc -o $@ $< ${AVLIB}
 
-decode.o: decode.c decode.h
-
-decode.so: decode.o
-	gcc -shared -fPIC -o $@ $< ${AVLIB}
-
-encode: encode.o
+x264enc_test: x264enc.o
 	gcc -o $@ $< ${AVLIB}
-
-encode.o: encode.c encode.h
-
-encode.so: encode.o
-	gcc -shared -fPIC -o $@ $< ${AVLIB}
-
-ft.o: ft.c
-	gcc `freetype-config --cflags` -c -o $@ $< 
-
-ft.so: ft.o
-	gcc -shared -fPIC -o $@ $< ${LIB}
-
-.PHONY: test1 testfont
-
-testdecode: decode
-	./$<
-
-test1: test1.o encode.so decode.so
-	gcc -o $@ $^ ${AVLIB}
-	./$@
-
-testsimple: simple
-	./simple
-
-testfont:
-	gcc `freetype-config --cflags` -DTEST -o testfont ft.c ${LIB}
-	./testfont
 
 clean:
-	rm -rf *.o *.so simple encode decode fbo test1
+	rm -rf *.o ${TESTS}
 
