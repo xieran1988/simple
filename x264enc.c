@@ -12,7 +12,7 @@ typedef struct {
 
 #define H(_m) ((x264enc_t *)_m)
 
-static int debug;
+static int debug = 1;
 
 #define dbp(lev, ...) { \
 	if (debug) \

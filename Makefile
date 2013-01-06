@@ -19,17 +19,14 @@ AVLIB_LINUX := \
 
 AVLIB := ${AVLIB_LINUX}
 
-TESTS := mp4dec_test x264enc_test
+TESTS := mp4dec_test x264enc_test mp4enc_test
 
 all: ${TESTS}
 
 %.o: %.c
 	gcc -c  -o $@ $<
 
-mp4dec_test: mp4dec.o
-	gcc -o $@ $< ${AVLIB}
-
-x264enc_test: x264enc.o
+%_test: %.o
 	gcc -o $@ $< ${AVLIB}
 
 clean:

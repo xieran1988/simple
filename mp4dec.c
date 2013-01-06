@@ -20,6 +20,10 @@ typedef struct {
 	float aac_time_base;
 	AVFrame *frm_h264;
 	AVFrame *frm_aac;
+
+	// frame_size(1024)*sizeof(uint16_t)*nb_channels(2)
+	// 	42 frames per second
+	uint8_t audiodata[4096*64];
 } mp4dec_t;
 
 #define M(_m) ((mp4dec_t *)_m)
@@ -30,6 +34,19 @@ static int debug;
 	if (debug) \
 		printf("mp4dec: " __VA_ARGS__);	\
 	}
+
+static void _dump_audio(char *fname, void *data, int len)
+{
+	static int opened;
+	static FILE *fp;
+
+	if (!opened) {
+		fp = fopen(fname, "wb+");
+		opened++;
+	}
+	fwrite(data, 1, len, fp);
+	fflush(fp);
+}
 
 void *mp4dec_open(char *fname)
 {
@@ -148,7 +165,7 @@ static int _decode_h264_frame(mp4dec_t *m)
 		}
 		if (pkt.stream_index == m->st_h264->index) {
 			i = avcodec_decode_video2(m->st_h264->codec, m->frm_h264, &got, &pkt);
-			dbp(1, "	h264, decode %d, got=%d key=%d dts=%lld pos=%.3f\n", 
+			dbp(1, "	h264, decode %d, got=%d key=%d dts=%ld pos=%.3f\n", 
 					i, got, m->frm_h264->key_frame, pkt.dts, pkt.dts*m->h264_time_base);
 			if (got) {
 				av_free_packet(&pkt);
@@ -162,8 +179,9 @@ static int _decode_h264_frame(mp4dec_t *m)
 						m->st_aac->codec->channels,
 						m->frm_aac->nb_samples,
 						m->st_aac->codec->sample_fmt, 1);
-			dbp(1, "  aac, decode %d, got=%d dts=%lld pos=%.3f size=%d #%d\n", 
-					i, got, pkt.dts, pkt.dts*m->aac_time_base, size, idx++);
+			dbp(1, "  aac, decode %d, got=%d dts=%ld pos=%.3f size=%d pkt.size=%d #%d\n", 
+					i, got, pkt.dts, pkt.dts*m->aac_time_base, size, pkt.size, idx++);
+			_dump_audio("/tmp/raw", m->frm_aac->data[0], size);
 		}
 		av_free_packet(&pkt);
 	}
