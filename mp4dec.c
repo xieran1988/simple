@@ -22,8 +22,11 @@ typedef struct {
 	AVFrame *frm_aac;
 
 	// frame_size(1024)*sizeof(uint16_t)*nb_channels(2)
-	// 	42 frames per second
-	uint8_t audiodata[4096*64];
+	// 	43 frames per second
+	uint8_t audio[4096*43];
+	float audio_pos[43];
+	int audio_cnt;
+
 } mp4dec_t;
 
 #define M(_m) ((mp4dec_t *)_m)
@@ -100,9 +103,10 @@ void *mp4dec_open(char *fname)
 	m->h264_time_base = m->st_h264->time_base.num*1.0/m->st_h264->time_base.den;
 	dbp(0, "width: %d\n", m->st_h264->codec->width);
 	dbp(0, "height: %d\n", m->st_h264->codec->height);
-	dbp(0, "h264.time_base: %d,%d\n", 
+	dbp(0, "h264.time_base: %d,%d %.3f\n", 
 			m->st_h264->time_base.num,
-			m->st_h264->time_base.den);
+			m->st_h264->time_base.den,
+			m->h264_time_base);
 
 	m->frm_h264 = avcodec_alloc_frame();
 
@@ -165,23 +169,26 @@ static int _decode_h264_frame(mp4dec_t *m)
 		}
 		if (pkt.stream_index == m->st_h264->index) {
 			i = avcodec_decode_video2(m->st_h264->codec, m->frm_h264, &got, &pkt);
-			dbp(1, "	h264, decode %d, got=%d key=%d dts=%ld pos=%.3f\n", 
-					i, got, m->frm_h264->key_frame, pkt.dts, pkt.dts*m->h264_time_base);
+			dbp(1, "	h264, decode %d, got=%d key=%d dts=%ld pos=%.3f cur=%.3f\n", 
+					i, got, m->frm_h264->key_frame, pkt.dts, 
+					pkt.dts*m->h264_time_base,
+					mp4dec_pos(m));
 			if (got) {
 				av_free_packet(&pkt);
 				return 0;
 			}
 		}
 		if (pkt.stream_index == m->st_aac->index) {
-			static int idx;
 			i = avcodec_decode_audio4(m->st_aac->codec, m->frm_aac, &got, &pkt);
-			int size = av_samples_get_buffer_size(NULL, 
-						m->st_aac->codec->channels,
-						m->frm_aac->nb_samples,
-						m->st_aac->codec->sample_fmt, 1);
-			dbp(1, "  aac, decode %d, got=%d dts=%ld pos=%.3f size=%d pkt.size=%d #%d\n", 
-					i, got, pkt.dts, pkt.dts*m->aac_time_base, size, pkt.size, idx++);
-			_dump_audio("/tmp/raw", m->frm_aac->data[0], size);
+			float pos = pkt.dts * m->aac_time_base;
+			dbp(1, "  aac, decode %d, got=%d pos=%.3f\n", i, got, pos);
+			void *data = m->frm_aac->data[0];
+			if (m->audio_cnt < 43) {
+				memcpy(m->audio + m->audio_cnt*4096, data, 4096);
+				m->audio_pos[m->audio_cnt] = pos;
+				m->audio_cnt++;
+				dbp(1, "  aac, picked %d\n", m->audio_cnt);
+			}
 		}
 		av_free_packet(&pkt);
 	}
@@ -189,7 +196,7 @@ static int _decode_h264_frame(mp4dec_t *m)
 	return 1;
 }
 
-void mp4dec_seek(void *_m, float pos)
+static void mp4dec_seek(void *_m, float pos)
 {
 	mp4dec_t *m = M(_m);
 	int i;
@@ -210,6 +217,8 @@ void mp4dec_seek_precise(void *_m, float pos)
 {
 	mp4dec_t *m = M(_m);
 
+	m->audio_cnt = 0;
+
 	mp4dec_seek(m, pos);
 	int n = 300;
 	while (n--) {
@@ -220,14 +229,17 @@ void mp4dec_seek_precise(void *_m, float pos)
 }
 
 int mp4dec_read_frame(void *_m, 
-		void **data, int *linesize
-		// void **audio, int audiosize
+		void **data, int *linesize,
+		void **audio, int *audiocount
 		)
 {
 	mp4dec_t *m = M(_m);
 	int i;
 		
 	dbp(0, "read frame\n");
+
+	float end = mp4dec_pos(m);
+	float start = end - 1./24;
 
 	i = _decode_h264_frame(m);
 	if (i) 
@@ -238,7 +250,20 @@ int mp4dec_read_frame(void *_m,
 			data[i] = m->frm_h264->data[i];
 			linesize[i] = m->frm_h264->linesize[i];
 		}
+		int cnt = 0;
+		for (i = 0; i < m->audio_cnt; i++) {
+			if (m->audio_pos[i] >= start) {
+				cnt = 0;
+				*audio = m->audio + 4096*i;
+				while (i < m->audio_cnt && m->audio_pos[i] < end)
+					cnt++, i++;
+				break;
+			}
+		}
+		dbp(0, "  got audio [%.2f,%.2f] %d\n", start, end, cnt);
+		*audiocount = cnt;
 	}
+
 	return 0;
 }
 
@@ -260,29 +285,26 @@ static _dump_yuv(mp4dec_t *m, char *prefix)
 
 int main(int argc, char *argv[])
 {
-	void *m[4];
+	void *m;
 	void *data[3];
 	int linesize[3];
-	int i;
+	int r;
 
 	debug = 1;
 
-	for (i = 0; i < 1; i++) {
-		char path[256];
-		sprintf(path, "/vid/%d.mp4", i+1);
-		m[i] = mp4dec_open(path);
-		if (!m[i])
-			return 0;
-	}
+	char path[256];
+	sprintf(path, "/vid/1.mp4");
+	m = mp4dec_open(path);
+	if (!m)
+		return 0;
 	
-	int n = 600;
-	while (n--) {
-		for (i = 0; i < 1; i++) {
-			int r = mp4dec_read_frame(m[i], data, linesize);
-			if (r)
-				mp4dec_seek(m[i], 0);
-		}
-	}
+	void *audio;
+	int audiocount;
+
+	mp4dec_seek_precise(m, 11);
+	r = mp4dec_read_frame(m, data, linesize, &audio, &audiocount);
+	r = mp4dec_read_frame(m, data, linesize, &audio, &audiocount);
+	r = mp4dec_read_frame(m, data, linesize, &audio, &audiocount);
 
 	return 0;
 }

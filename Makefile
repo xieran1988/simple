@@ -24,9 +24,15 @@ TESTS := mp4dec_test x264enc_test mp4enc_test
 all: ${TESTS}
 
 %.o: %.c
-	gcc -c  -o $@ $<
+	gcc -c -o $@ $<
 
-%_test: %.o
+mp4enc_test: mp4enc.o
+	gcc -o $@ $< ${AVLIB}
+
+x264enc_test: x264enc.o
+	gcc -o $@ $< ${AVLIB}
+
+mp4dec_test: mp4dec.o
 	gcc -o $@ $< ${AVLIB}
 
 clean:
