@@ -19,6 +19,11 @@ static int debug = 1;
 		printf("x264enc: " __VA_ARGS__);	\
 }
 
+void x264enc_loglevel(int lev)
+{
+	debug = lev;
+}
+
 void *x264enc_new(int width, int height)
 {
 	x264enc_t *h = (x264enc_t *)malloc(sizeof(x264enc_t));
@@ -52,29 +57,20 @@ void x264enc_encode(void *_h, void **data, int *linesize, void **buf, int *size)
 	picin.img.plane[1] = data[1];
 	picin.img.plane[2] = data[2];
 
-	dbp(0, "h.x %p\n", h->x);
-	dbp(0, "data %p,%p,%p\n", data[0], data[1], data[2]);
-	dbp(0, "line %d,%d,%d\n", linesize[0], linesize[1], linesize[2]);
-
 	picin.img.i_csp = X264_CSP_I420;
 	picin.i_pts = h->pts;
-	
-	h->pts += 1000000;
 
 	x264_nal_t *nal;
 	int i_nal;
 	r = x264_encoder_encode(h->x, &nal, &i_nal, &picin, &picout);
-	dbp(0, "encode %d\n", r);
-	dbp(0, "nal %p\n", nal);
+	dbp(0, "encode %d nal=%p\n", r, nal);
 
-	if (nal)
+	if (nal) {
 		*buf = nal[0].p_payload;
-	*size = r;
-}
-
-int main()
-{
-	
-	return 0;
+		*size = r;
+	} else {
+		*buf = NULL;
+		*size = 0;
+	}
 }
 

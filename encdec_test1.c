@@ -1,19 +1,32 @@
-#include "decode.h"
-#include "encode.h"
+
+#include "mp4dec.h"
+#include "x264enc.h"
 
 int main()
 {
-	void *m = mp4_open("/Users/xieran/1.mp4");
-	void *h = h264_new(mp4_width(m), mp4_height(m));
+	void *dec;
+	void *enc;
 	void *data[3];
 	int line[3];
 	void *buf;
 	int len;
+	void *sample;
+	int cnt;
+	int i;
+	
+	mp4dec_loglevel(1);
 
-	mp4_read_frame(m, data, line);
+	dec = mp4dec_open("/vid/1.mp4");
+
+	for (i = 0; i < 200; i++) 
+		mp4dec_read_frame(dec, data, line, &sample, &cnt);
+
+	/*
+	enc = x264enc_new(mp4dec_width(dec), mp4dec_height(dec));
 	int i;
 	for (i = 0; i < 20; i++)
-		h264_encode(h, data, line, &buf, &len);
+		x264enc_encode(enc, data, line, &buf, &len);
+		*/
 
 	return 0;
 }

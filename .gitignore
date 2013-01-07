@@ -3,4 +3,4 @@
 *.so
 Hei.ttf
 shaders/
-*_test
+*_test[0-9]
