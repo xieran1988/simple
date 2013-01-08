@@ -18,8 +18,11 @@ int main()
 
 	dec = mp4dec_open("/vid/1.mp4");
 
-	for (i = 0; i < 200; i++) 
+	mp4dec_seek_precise(dec, 0.0);
+	for (i = 0; i < 100; i++) {
 		mp4dec_read_frame(dec, data, line, &sample, &cnt);
+		printf("samp: %d\n", cnt);
+	}
 
 	/*
 	enc = x264enc_new(mp4dec_width(dec), mp4dec_height(dec));

@@ -52,11 +52,10 @@ static AVStream *add_video_stream(AVFormatContext *oc, enum CodecID codec_id, in
 
 	st = avformat_new_stream(oc, NULL);
 	if (!st) {
-		dbp(0, "Could not alloc stream\n");
+		dbp(0, "  Could not alloc video stream\n");
 		return NULL;
 	}
 
-	st->index = 0;
 	c = st->codec;
 	c->codec_id = codec_id;
 	c->codec_type = AVMEDIA_TYPE_VIDEO;
@@ -82,11 +81,10 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id)
 
 	st = avformat_new_stream(oc, NULL);
 	if (!st) {
-		dbp(0, "Could not alloc stream\n");
+		dbp(0, "  Could not alloc audio stream\n");
 		return NULL;
 	}
 
-	st->index = 1;
 	c = st->codec;
 	c->codec_id = codec_id;
 	c->codec_type = AVMEDIA_TYPE_AUDIO;
@@ -111,13 +109,13 @@ static void open_audio(AVFormatContext *oc, AVStream *st)
 
 	codec = avcodec_find_encoder(c->codec_id);
 	if (!codec) {
-		dbp(0, "codec not found\n");
+		dbp(0, "  audio codec not found\n");
 		return ;
 	}
 
 	/* open it */
 	if (avcodec_open2(c, codec, NULL) < 0) {
-		dbp(0, "could not open audio codec\n");
+		dbp(0, "  could not open audio codec\n");
 		return ;
 	}
 }
@@ -131,12 +129,12 @@ static void open_video(AVFormatContext *oc, AVStream *st)
 
 	codec = avcodec_find_encoder(c->codec_id);
 	if (!codec) {
-		dbp(0, "video codec not found\n");
+		dbp(0, "  video codec not found\n");
 		return ;
 	}
 
 	if (avcodec_open2(c, codec, NULL) < 0) {
-		dbp(0, "could not open video codec\n");
+		dbp(0, "  could not open video codec\n");
 		return ;
 	}
 }
@@ -156,7 +154,7 @@ static void write_audio_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, ui
 	m->audio_frm->data[0] = samples;
 	m->audio_frm->nb_samples = c->frame_size;
 	r = avcodec_encode_audio2(c, &pkt, m->audio_frm, &got);
-	dbp(0, "audio_encode %d got=%d\n", r, got);
+	dbp(0, "  audio_encode %d got=%d\n", r, got);
 
 	if (c->coded_frame && c->coded_frame->pts != AV_NOPTS_VALUE)
 		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base, st->time_base);
@@ -164,7 +162,7 @@ static void write_audio_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, ui
 	pkt.stream_index = st->index;
 
 	r = av_interleaved_write_frame(oc, &pkt);
-	dbp(0, "audio_frame %d size=%d\n", r, pkt.size);
+	dbp(0, "  audio_frame %d size=%d\n", r, pkt.size);
 }
 
 static void write_video_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, void *data, int len)
@@ -179,7 +177,7 @@ static void write_video_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, vo
 	pkt.size = len;
 
 	r = av_interleaved_write_frame(oc, &pkt);
-	dbp(0, "video_frame: %d\n", r);
+	dbp(0, "  video_frame: %d\n", r);
 }
 
 void mp4enc_write_frame(void *_m, void **yuv, int *linesize, void *sample, int cnt)
@@ -188,6 +186,8 @@ void mp4enc_write_frame(void *_m, void **yuv, int *linesize, void *sample, int c
 	void *data;
 	int len;
 	int i;
+
+	dbp(0, "write frame\n");
 
 	x264enc_encode(m->x264, yuv, linesize, &data, &len);
 	if (len) 
@@ -207,6 +207,8 @@ void *mp4enc_openfile(int w, int h, char *filename)
 
 	_init();
 
+	dbp(0, "open %s\n", filename);
+
 	m = (mp4enc_t *)malloc(sizeof(mp4enc_t));
 	memset(m, 0, sizeof(mp4enc_t));
 	
@@ -215,19 +217,12 @@ void *mp4enc_openfile(int w, int h, char *filename)
 	oc->oformat = fmt;
 	strcpy(oc->filename, filename);
 
-	fmt = av_guess_format("mp4", NULL, NULL);
-	oc = avformat_alloc_context();
-	oc->oformat = fmt;
-	strcpy(oc->filename, filename);
-
-	video_st = NULL;
-	audio_st = NULL;
 	fmt->video_codec = CODEC_ID_H264;
 	fmt->audio_codec = CODEC_ID_AAC;
 	video_st = add_video_stream(oc, fmt->video_codec, w, h);
 	audio_st = add_audio_stream(oc, fmt->audio_codec);
 
-	open_video(oc, video_st);
+//	open_video(oc, video_st);
 	open_audio(oc, audio_st);
 
 	av_dump_format(oc, 0, filename, 1);
