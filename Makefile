@@ -3,11 +3,13 @@
 GLLIB_MAC = -framework GLUT -framework OpenGL -framework Cocoa \
 			/Users/xieran/freetype-gl-read-only/freetype-gl.a \
 			`freetype-config --libs`
+
 AVLIB_MAC := \
 		/usr/lib/libav*.a \
 		/usr/lib/libbz2.dylib \
 		/usr/lib/libz.dylib \
 		/usr/lib/libx264.dylib \
+		/usr/lib/libfaac.dylib \
 		-framework CoreFoundation \
 		-framework VideoDecodeAcceleration \
 		-framework QuartzCore
@@ -21,7 +23,11 @@ AVLIB_LINUX := \
 	/usr/lib/x86_64-linux-gnu/libx264.so \
 	-lm -lz -lbz2 -lpthread -lswscale
 
+ifeq ($(shell uname -s),Darwin)
+AVLIB := ${AVLIB_MAC}
+else
 AVLIB := ${AVLIB_LINUX}
+endif
 
 TESTS := encdec_test1 encdec_test2 encdec_test3
 
