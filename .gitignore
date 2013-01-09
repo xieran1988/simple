@@ -3,5 +3,5 @@
 *.so
 Hei.ttf
 shaders/
-*_test[0-9]
+*_test
 log*

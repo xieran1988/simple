@@ -5,7 +5,7 @@ GLLIB_MAC = -framework GLUT -framework OpenGL -framework Cocoa \
 			`freetype-config --libs`
 
 AVLIB_MAC := \
-		/usr/lib/libav*.a \
+		/usr/lib/libav*.dylib \
 		/usr/lib/libbz2.dylib \
 		/usr/lib/libz.dylib \
 		/usr/lib/libx264.dylib \
@@ -29,34 +29,16 @@ else
 AVLIB := ${AVLIB_LINUX}
 endif
 
-TESTS := encdec_test1 encdec_test2 encdec_test3
-
-all: ${TESTS}
+all: encdec_test
 
 %.o: %.c
 	gcc -c -o $@ $<
 
-encdec_test1: mp4dec.o x264enc.o encdec_test1.o
+encdec_test: mp4dec.o mp4enc.o encdec_test.o
 	gcc -o $@ $^ ${AVLIB}
 
-encdec_test2: mp4dec.o x264enc.o mp4enc.o encdec_test2.o
-	gcc -o $@ $^ ${AVLIB}
-
-encdec_test3: encdec_test3.o
-	gcc -o $@ $^ ${AVLIB}
-
-show3:
-	make && ./encdec_test3 /tmp/out.mp4 2>log2 >log && ffplay /tmp/out.mp4
-
-show2:
-	make && ./encdec_test2 2>log2 >log && ffplay /tmp/out.mp4
-
-convs16:
-	avconv -f s16le -ar 44.1k -ac 2 -i /tmp/s16.pcm -y /tmp/s16.wav
-
-plays16:
-	ffplay -f s16le -ar 44.1k -ac 2 /tmp/s16.pcm
-
+show4: encdec_test4
+	$< 2>log2 >log && ffplay /tmp/out.mp4
 
 clean:
 	rm -rf *.o ${TESTS}
