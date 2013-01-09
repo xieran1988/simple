@@ -156,11 +156,16 @@ static void write_audio_frame(AVFormatContext *oc, AVStream *st)
 
     get_audio_frame(samples, audio_input_frame_size, c->channels);
     frame->nb_samples = audio_input_frame_size;
+
     avcodec_fill_audio_frame(frame, c->channels, c->sample_fmt,
                              (uint8_t *)samples,
                              audio_input_frame_size *
                              av_get_bytes_per_sample(c->sample_fmt) *
                              c->channels, 1);
+		printf("audio: nb_samples=%d input=%d size=%d\n", 
+				frame->nb_samples, audio_input_frame_size,
+				frame->linesize[0]
+				);
 
     avcodec_encode_audio2(c, &pkt, frame, &got_packet);
     if (!got_packet)
@@ -209,7 +214,6 @@ static AVStream *add_video_stream(AVFormatContext *oc, enum AVCodecID codec_id)
         fprintf(stderr, "Could not alloc stream\n");
         exit(1);
     }
-
 
     c = st->codec;
 
@@ -266,11 +270,14 @@ static AVFrame *alloc_picture(enum AVPixelFormat pix_fmt, int width, int height)
 static void open_video(AVFormatContext *oc, AVStream *st)
 {
     AVCodecContext *c;
+		AVDictionary *opt = NULL;
+
+		av_dict_set(&opt, "preset", "ultrafast", 0);
 
     c = st->codec;
 
     /* open the codec */
-    if (avcodec_open2(c, NULL, NULL) < 0) {
+    if (avcodec_open2(c, NULL, &opt) < 0) {
         fprintf(stderr, "could not open video codec\n");
         exit(1);
     }
@@ -378,32 +385,43 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
 
         ret = av_interleaved_write_frame(oc, &pkt);
     } else {
-        /* encode the image */
-        out_size = avcodec_encode_video(c, video_outbuf,
-                                        video_outbuf_size, picture);
+
+        AVPacket pkt;
+
+				if (0) {
+					/* encode the image */
+					out_size = avcodec_encode_video(c, video_outbuf,
+							video_outbuf_size, picture);
+					if (out_size > 0) {
+						pkt.data         = video_outbuf;
+						pkt.size         = out_size;
+					}
+				} else {
+					int got;
+					static int64_t pts;
+
+					pts += 1;
+					av_init_packet(&pkt);
+					picture->pts = pts;
+					avcodec_encode_video2(c, &pkt, picture, &got);
+					out_size = pkt.size;
+				}
+				printf("out: size=%d pts=%lld dts=%lld\n", out_size, pkt.pts, pkt.dts);
+
         /* If size is zero, it means the image was buffered. */
         if (out_size > 0) {
-            AVPacket pkt;
-            av_init_packet(&pkt);
+            //av_init_packet(&pkt);
 
-            if (c->coded_frame->pts != AV_NOPTS_VALUE)
-                pkt.pts = av_rescale_q(c->coded_frame->pts,
-                                       c->time_base, st->time_base);
+            //if (c->coded_frame->pts != AV_NOPTS_VALUE)
+              //  pkt.pts = av_rescale_q(c->coded_frame->pts,
+             //                          c->time_base, st->time_base);
             if (c->coded_frame->key_frame)
                 pkt.flags |= AV_PKT_FLAG_KEY;
             pkt.stream_index = st->index;
-            pkt.data         = video_outbuf;
-            pkt.size         = out_size;
-
-						static int64_t dts;
-
-						dts += 1;
-						pkt.pts = dts;
-						
-						printf("pts=%lld dts=%lld\n", pkt.pts, pkt.dts);
 
             /* Write the compressed frame to the media file. */
             ret = av_interleaved_write_frame(oc, &pkt);
+						av_free_packet(&pkt);
         } else {
             ret = 0;
         }

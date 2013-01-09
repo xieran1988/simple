@@ -2,7 +2,7 @@
 #include "mp4dec.h"
 #include "x264enc.h"
 
-int main()
+int main(int argc, char *argv[])
 {
 	void *dec;
 	void *enc;
@@ -16,7 +16,7 @@ int main()
 	
 	mp4dec_loglevel(1);
 
-	dec = mp4dec_open("/vid/1.mp4");
+	dec = mp4dec_open(argv[1]);
 
 	mp4dec_seek_precise(dec, 0.0);
 	for (i = 0; i < 100; i++) {

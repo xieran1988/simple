@@ -45,6 +45,19 @@ encdec_test2: mp4dec.o x264enc.o mp4enc.o encdec_test2.o
 encdec_test3: encdec_test3.o
 	gcc -o $@ $^ ${AVLIB}
 
+show3:
+	make && ./encdec_test3 /tmp/out.mp4 2>log2 >log && ffplay /tmp/out.mp4
+
+show2:
+	make && ./encdec_test2 2>log2 >log && ffplay /tmp/out.mp4
+
+convs16:
+	avconv -f s16le -ar 44.1k -ac 2 -i /tmp/s16.pcm -y /tmp/s16.wav
+
+plays16:
+	ffplay -f s16le -ar 44.1k -ac 2 /tmp/s16.pcm
+
+
 clean:
 	rm -rf *.o ${TESTS}
 

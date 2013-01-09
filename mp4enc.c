@@ -133,6 +133,7 @@ static void open_video(AVFormatContext *oc, AVStream *st)
 {
 	AVCodec *codec;
 	AVCodecContext *c;
+	AVDictionary *opt = NULL;
 
 	c = st->codec;
 
@@ -142,16 +143,40 @@ static void open_video(AVFormatContext *oc, AVStream *st)
 		return ;
 	}
 
-	if (avcodec_open2(c, NULL, NULL) < 0) {
+	av_dict_set(&opt, "preset", "ultrafast", 0);
+	av_dict_set(&opt, "tune", "zerolatency", 0);
+	if (avcodec_open2(c, NULL, &opt) < 0) {
 		dbp(0, "  could not open video codec\n");
 		return ;
 	}
 }
 
+static void _get_audio_frame(int16_t *samples, int frame_size, int nb_channels)
+{
+    int j, i, v;
+    int16_t *q;
+		static float t, tincr, tincr2;
+
+		if (!tincr) {
+			tincr = 2 * M_PI * 110.0 / 44100;
+			/* increment frequency by 110 Hz per second */
+			tincr2 = 2 * M_PI * 110.0 / 44100 / 44100;
+		}
+
+    q = samples;
+    for (j = 0; j < frame_size; j++) {
+        v = (int)(sin(t) * 10000);
+        for (i = 0; i < nb_channels; i++)
+            *q++ = v;
+        t     += tincr;
+        tincr += tincr2;
+    }
+}
+
 static void write_audio_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, uint8_t *samples)
 {
 	AVCodecContext *c;
-	AVPacket pkt;
+	AVPacket pkt = {};
 	int r;
 	int got;
 
@@ -160,10 +185,19 @@ static void write_audio_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, ui
 
 	pkt.data = m->audio_outbuf;
 	pkt.size = sizeof(m->audio_outbuf);
-	m->audio_frm->data[0] = samples;
-	m->audio_frm->nb_samples = c->frame_size;
+
+//	_get_audio_frame((uint16_t *)samples, 1024, 2);
+	m->audio_frm->nb_samples = 1024;
+	avcodec_fill_audio_frame(m->audio_frm, c->channels, c->sample_fmt,
+													 samples,
+													 1024 *
+													 av_get_bytes_per_sample(c->sample_fmt) *
+													 c->channels, 1);
+//	m->audio_frm->data[0] = samples;
+//	m->audio_frm->linesize[0] = 4096;
+
 	r = avcodec_encode_audio2(c, &pkt, m->audio_frm, &got);
-	dbp(0, "  audio_encode %d got=%d\n", r, got);
+	dbp(0, "  audio: encode %d got=%d size=%d\n", r, got, pkt.size);
 
 	if (c->coded_frame && c->coded_frame->pts != AV_NOPTS_VALUE)
 		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base, st->time_base);
@@ -171,32 +205,34 @@ static void write_audio_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, ui
 	pkt.stream_index = st->index;
 
 	r = av_interleaved_write_frame(oc, &pkt);
-	dbp(0, "  audio_frame %d size=%d\n", r, pkt.size);
+//	dbp(0, "  audio: frame %d size=%d\n", r, pkt.size);
 }
 
 static void write_video_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, void **yuv, int *linesize)
 {
-	AVPacket pkt;
+	AVPacket pkt = {};
 	int r, i, got;
-
-	av_init_packet(&pkt);
 
 	for (i = 0; i < 3; i++) {
 		m->video_frm->data[i] = yuv[i];
 		m->video_frm->linesize[i] = linesize[i];
 	}
+
 	m->video_frm->pts = m->pts;
 	m->pts += 1;
 
-	r = avcodec_encode_video2(m->video_st->codec, &pkt, m->video_frm, &got);
-	dbp(0, "  video: encode r=%d got=%d\n", r, got);
+	av_init_packet(&pkt);
 
-	pkt.stream_index = st->index;
+	avcodec_encode_video2(m->video_st->codec, &pkt, m->video_frm, &got);
+	dbp(0, "  video: encode size=%d got=%d dts=%lld pts=%lld\n", 
+			pkt.size, got, pkt.dts, pkt.pts);
 
-	r = av_interleaved_write_frame(oc, &pkt);
-	dbp(0, "  video: write=%d\n", r);
-
-	av_free_packet(&pkt);
+	if (pkt.size > 0) {
+		pkt.stream_index = st->index;
+		r = av_interleaved_write_frame(oc, &pkt);
+	//	dbp(0, "  video: write=%d\n", r);
+		av_free_packet(&pkt);
+	}
 }
 
 void mp4enc_write_frame(void *_m, void **yuv, int *linesize, void *sample, int cnt)
@@ -256,5 +292,13 @@ void *mp4enc_openfile(int w, int h, char *filename)
 
 	return m;
 }
+
+void mp4enc_close(void *_m)
+{
+	mp4enc_t *m = M(_m);
+
+	av_write_trailer(m->oc);
+}
+
 
 
