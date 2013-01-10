@@ -1,7 +1,4 @@
 *.o
 *.swp
 *.so
-Hei.ttf
-shaders/
 *_test
-log*

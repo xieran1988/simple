@@ -2,8 +2,6 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
-#include <libavresample/avresample.h>
-#include <libavutil/dict.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>

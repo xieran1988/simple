@@ -20,12 +20,16 @@ static int inited;
 
 #define dbp(lev, ...) { \
 	if (debug) \
-		printf("ft: " __VA_ARGS__);	\
+		printf("font: " __VA_ARGS__);	\
 	}
 
 static void _init()
 {
 	int error;
+
+	if (inited++)
+		return ;
+
 	debug = 1;
 
 	error = FT_Init_FreeType( &library );
@@ -59,7 +63,7 @@ static void compute_string_bbox(FT_BBox *ret)
 				glyph_bbox.xMax,
 				glyph_bbox.yMin,
 				glyph_bbox.yMax
-				)
+				);
 
 		glyph_bbox.xMin += pos[n].x;
 		glyph_bbox.xMax += pos[n].x;
@@ -112,12 +116,9 @@ static void _dump(int i, void *data, int w, int h)
 	system(cmd);
 }
 
-int ft_fill_texture(wchar_t *text, int font_size)
+int font_fill_texture(wchar_t *text, int font_size)
 {
-	if (!inited) {
-		_init();
-		inited++;
-	}
+	_init();
 
 	int error;
 	FT_BBox  box;
@@ -203,12 +204,10 @@ int ft_fill_texture(wchar_t *text, int font_size)
 
 	dbp(0, "tex: %dx%d\n", w, h);
 
-#ifndef TEST
 	void *buf = malloc(w*h);
 	memset(buf, 0, w*h);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, w, h, 0, GL_ALPHA, GL_UNSIGNED_BYTE, buf);
 	free(buf);
-#endif
 
 	for ( n = 0; n < num_glyphs; n++ )
 	{
@@ -228,11 +227,9 @@ int ft_fill_texture(wchar_t *text, int font_size)
 		dbp(0, "bmp: 	mode %d\n", bmp.pixel_mode);
 		dbp(0, "bmp: 	8bit mode %d\n", FT_PIXEL_MODE_GRAY);
 		
-#ifndef TEST
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 
 				pos[n].x + gb->left - box.xMin, box.yMax - gb->top, bmp.pitch, bmp.rows, 
 				GL_ALPHA, GL_UNSIGNED_BYTE, bmp.buffer);
-#endif
 
 		_dump(n, bmp.buffer, bmp.pitch, bmp.rows);
 
@@ -243,16 +240,6 @@ int ft_fill_texture(wchar_t *text, int font_size)
 
 	for (n = 0; n < num_glyphs; n++)
 		FT_Done_Glyph(glyphs[n]);
-
-	return 0;
-}
-
-int main()
-{
-	int error;
-	debug = 1;
-
-	ft_fill_texture(L"哈哈好", 200);
 
 	return 0;
 }

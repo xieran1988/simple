@@ -1,8 +1,7 @@
 
+GLLIB_MAC := -framework GLUT -framework OpenGL -framework Cocoa 
 
-GLLIB_MAC = -framework GLUT -framework OpenGL -framework Cocoa \
-			/Users/xieran/freetype-gl-read-only/freetype-gl.a \
-			`freetype-config --libs`
+FTLIB := `freetype-config --libs`
 
 AVLIB_MAC := \
 		/usr/lib/libav*.dylib \
@@ -25,21 +24,20 @@ AVLIB_LINUX := \
 
 ifeq ($(shell uname -s),Darwin)
 AVLIB := ${AVLIB_MAC}
+GLLIB := ${GLLIB_MAC}
 else
 AVLIB := ${AVLIB_LINUX}
 endif
 
-all: encdec_test
+T := $(dir $(lastword $(MAKEFILE_LIST)))
+
+SO := ${CC} -shared -fPIC 
+
+_all: all
 
 %.o: %.c
-	gcc -c -o $@ $<
-
-encdec_test: mp4dec.o mp4enc.o encdec_test.o
-	gcc -o $@ $^ ${AVLIB}
-
-show4: encdec_test4
-	$< 2>log2 >log && ffplay /tmp/out.mp4
+	gcc -I$T `freetype-config --cflags` -c -o $@ $< 
 
 clean:
-	rm -rf *.o ${TESTS}
+	rm -rf *.o *_test *.so
 
