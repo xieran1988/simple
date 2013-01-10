@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "mp4enc.h"
+#include "a.h"
 
 static int inited;
 

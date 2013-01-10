@@ -3,6 +3,8 @@ GLLIB_MAC := -framework GLUT -framework OpenGL -framework Cocoa
 
 FTLIB := `freetype-config --libs`
 
+JPGLIB := /opt/local/lib/libjpeg.dylib
+
 AVLIB_MAC := \
 		/usr/lib/libav*.dylib \
 		/usr/lib/libbz2.dylib \
@@ -41,5 +43,6 @@ _all: all
 	gcc -I$T `freetype-config --cflags` -c -o $@ $< 
 
 clean:
-	rm -rf *.o *.a *_test *.so
+	rm -rf *.o *.a test *.so
+
 

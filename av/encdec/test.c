@@ -1,6 +1,5 @@
 
-#include "mp4dec.h"
-#include "mp4enc.h"
+#include "a.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
