@@ -33,11 +33,13 @@ T := $(dir $(lastword $(MAKEFILE_LIST)))
 
 SO := ${CC} -shared -fPIC 
 
+A := ar crv 
+
 _all: all
 
 %.o: %.c
 	gcc -I$T `freetype-config --cflags` -c -o $@ $< 
 
 clean:
-	rm -rf *.o *_test *.so
+	rm -rf *.o *.a *_test *.so
 

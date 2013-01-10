@@ -1,9 +1,5 @@
 
 include ../../top.mk
 
-all: font.so
+all: font.o
 
-font.so: font.o
-	${SO} -o $@ $< ${GLLIB} ${FTLIB}
-
-font.o: CFLAGS += `freetype-config --cflags`

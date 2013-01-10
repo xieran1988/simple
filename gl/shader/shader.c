@@ -13,12 +13,13 @@ static int debug = 1;
 		printf("shader: " __VA_ARGS__);	\
 	}
 
-GLuint shader_new_frag(char *filename) 
+GLuint shader_new_frag(char *filename)
 {
 	GLuint program = glCreateProgram();
 	GLuint shader = glCreateShader(GL_FRAGMENT_SHADER);
 
 	static char buf[64*1024];
+	const char *src = buf;
 	FILE *fp = fopen(filename, "r");
 	int len;
 	if (!fp) {
@@ -29,7 +30,7 @@ GLuint shader_new_frag(char *filename)
 	buf[len] = 0;
 	fclose(fp);
 
-	glShaderSource(shader, 1, &buf, NULL);
+	glShaderSource(shader, 1, &src, NULL);
 	glCompileShader(shader);
 
 	GLint logLength;

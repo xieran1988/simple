@@ -16,6 +16,13 @@ typedef struct {
 
 #define V(_v) ((video_t *)(_v))
 
+static int debug = 1;
+
+#define dbp(lev, ...) { \
+	if (debug) \
+		printf("video: " __VA_ARGS__);	\
+	}
+
 static GLuint _tex_new(int w, int h) 
 {
 	GLuint t;
@@ -40,13 +47,15 @@ void *video_new(int w, int h)
 	v->tex[1] = _tex_new(w/2, h/2); 
 	v->tex[2] = _tex_new(w/2, h/2); 
 
-	v->prog = shader_new_frag("yuv2rgb.frag");
+	v->prog = shader_new_frag("/shader/yuv2rgb.frag");
 	if (!v->prog)
 		return NULL;
 
 	v->loc[0] = glGetUniformLocation(v->prog, "tex1");
 	v->loc[1] = glGetUniformLocation(v->prog, "tex2");
 	v->loc[2] = glGetUniformLocation(v->prog, "tex3");
+
+	dbp(0, "video_new %d,%d,%d\n", v->loc[0], v->loc[1], v->loc[2]);
 
 	return v;
 }

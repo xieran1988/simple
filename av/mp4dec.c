@@ -40,6 +40,16 @@ static int debug;
 		printf("mp4dec: " __VA_ARGS__);	\
 	}
 
+static void _init() 
+{
+	if (inited++)
+		return ;
+
+	debug = 0;
+	av_register_all();
+	av_log_set_level(AV_LOG_ERROR);
+}
+
 void mp4dec_loglevel(int lev)
 {
 	debug = lev;
@@ -80,11 +90,8 @@ static _dump_yuv(mp4dec_t *m, char *prefix)
 
 void *mp4dec_open(char *fname)
 {
-	if (!inited) {
-		av_register_all();
-//		av_log_set_level(AV_LOG_DEBUG);
-		inited++;
-	}
+
+	_init();
 
 	mp4dec_t *m = malloc(sizeof(mp4dec_t));
 	AVCodec *c;

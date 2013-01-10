@@ -1,5 +1,6 @@
 
 include ../../top.mk
 
-all: vid.o
+all: util.o
+
 
