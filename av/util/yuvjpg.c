@@ -12,9 +12,9 @@ int yuv2jpg(char *path, int w, int h, void **_data, int *line)
 		return 1;
 	h &= ~15;
 
-	printf("yuv2jpg: %d,%d\n", w, h);
-	printf("yuv2jpg: %p,%p,%p\n", data[0], data[1], data[2]);
-	printf("yuv2jpg: %d,%d,%d\n", line[0], line[1], line[2]);
+//	printf("yuv2jpg: %d,%d\n", w, h);
+//	printf("yuv2jpg: %p,%p,%p\n", data[0], data[1], data[2]);
+//	printf("yuv2jpg: %d,%d,%d\n", line[0], line[1], line[2]);
 
 	struct jpeg_compress_struct cinfo;
 	struct jpeg_error_mgr jerr;
@@ -49,15 +49,12 @@ int yuv2jpg(char *path, int w, int h, void **_data, int *line)
 	p[2] = cb;
 	p[1] = cr;
 
-	printf("start comp: %d\n", cinfo.image_height);
 	for (j = 0; j < cinfo.image_height; j += 16) {
-		printf("at: %d\n", j);
 		for (i = 0; i < 16; i++) {
 			y[i] = data[0] + line[0]*(i+j);
 			cr[i/2] = data[1] + line[1]*((i+j)/2);
 			cb[i/2] = data[2] + line[2]*((i+j)/2);
 		}
-		printf("at2: %d\n", j);
 		jpeg_write_raw_data(&cinfo, p, 16);
 	}
 

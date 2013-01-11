@@ -37,7 +37,7 @@ static void _init()
 		dbp(0, "open ft failed\n");
 	}
 
-	error = FT_New_Face( library, "Hei.ttf", 0, &face );
+	error = FT_New_Face( library, "/font/Hei.ttf", 0, &face );
 	if (error) {
 		dbp(0, "newface failed\n");
 	}
@@ -116,7 +116,7 @@ static void _dump(int i, void *data, int w, int h)
 	system(cmd);
 }
 
-int font_fill_texture(wchar_t *text, int font_size)
+GLuint fontex_new(wchar_t *text, int font_size)
 {
 	_init();
 
@@ -203,6 +203,14 @@ int font_fill_texture(wchar_t *text, int font_size)
 	int h = box.yMax - box.yMin;
 
 	dbp(0, "tex: %dx%d\n", w, h);
+
+	/*
+	glGenTextures(1, &texstr);
+	glBindTexture(GL_TEXTURE_2D, texstr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	*/
 
 	void *buf = malloc(w*h);
 	memset(buf, 0, w*h);

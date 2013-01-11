@@ -1,13 +1,16 @@
 
 include ../../top.mk
 
-all: 
-	make clean
-	make gl_test
+all: old
 
-gl_test: test1.o
-	${CC} -o $@ $^ ${GLLIB} ${AVLIB} \
-		$T/gl/vid/vid.o $T/av/av.a \
-		$T/gl/shader/shader.o \
-		$T/gl/util/util.o 
+LIB := ${GLLIB} ${AVLIB} ${FTLIB} ${JPGLIB}
+LIB += $T/av/encdec/a.a 
+LIB += $T/av/util/a.a 
+#LIB += $T/gl/vid/vid.o 
+#LIB += $T/gl/shader/shader.o 
+LIB += $T/gl/util/util.o 
+
+old: old.o shader.o yuvtex.o fontex.o
+	${CC} -o $@ $^ ${LIB}
+
 

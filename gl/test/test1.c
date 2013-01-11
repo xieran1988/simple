@@ -5,9 +5,8 @@
 static void _disp() 
 {
 	glLoadIdentity();
-	glColor4f(0.3, 0.3, 0.3, 1);
-	gl_draw_quads(0.3, 0.3, 0.1, 0.2, 0.2);
-	gl_checkerr();
+	glColor3f(0, 0, 0);
+	gl_draw_quads(0.5, 0.5, 0.1, 0.2, 0.2);
 }
 
 static void *v;
@@ -31,8 +30,9 @@ static void _disp2()
 			y[i*32+j] = j*8;
 
 	glLoadIdentity();
+	glColor3f(1, 0, 0);
 //	video_render_start(v, data, line);
-	gl_draw_quads(0.5, 1, 0, 0.2, 0.2);
+	gl_draw_quads(0.5, 1, 0, 0.1, 0.1);
 //	video_render_end(v);
 }
 
@@ -40,6 +40,7 @@ int main(int argc, char *argv[])
 {
 	if (argc != 2)
 		return 0;
+
 	int sel = -1;
 	sscanf(argv[1], "%d", &sel);
 

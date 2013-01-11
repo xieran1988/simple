@@ -3,7 +3,7 @@ GLLIB_MAC := -framework GLUT -framework OpenGL -framework Cocoa
 
 FTLIB := `freetype-config --libs`
 
-JPGLIB := /opt/local/lib/libjpeg.dylib
+JPGLIB := /opt/libjpeg-turbo/lib/libjpeg.dylib 
 
 AVLIB_MAC := \
 		/usr/lib/libav*.dylib \
@@ -40,7 +40,7 @@ A := ar crv
 _all: all
 
 %.o: %.c
-	gcc -I$T `freetype-config --cflags` -c -o $@ $< 
+	gcc -I$T -I/opt/libjpeg-turbo/include `freetype-config --cflags` -c -o $@ $< 
 
 clean:
 	rm -rf *.o *.a test *.so

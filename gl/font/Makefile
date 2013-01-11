@@ -1,5 +1,5 @@
 
 include ../../top.mk
 
-all: font.o
+all: fontex.o
 

@@ -17,24 +17,35 @@ static void init()
 		_init();
 }
 
-void gl_draw_quads(float x, float y, float z, float w, float h)
+void gl_draw_quads_tex(float x, float y, float z, 
+		float w, float h, float texw, float texh)
 {
 	glBegin(GL_QUADS);
-		glTexCoord2f(0, 0); glVertex3f(x, y-h, z);
-		glTexCoord2f(0, 1); glVertex3f(x, y, z);
-		glTexCoord2f(1, 1); glVertex3f(x+w, y, z);
-		glTexCoord2f(1, 0); glVertex3f(x+w, y-h, z);
+		glTexCoord2f(0, 0); glVertex3f(x, y+h, z);
+		glTexCoord2f(0, texh); glVertex3f(x, y, z);
+		glTexCoord2f(texw, texh); glVertex3f(x+w, y, z);
+		glTexCoord2f(texw, 0); glVertex3f(x+w, y+h, z);
 	glEnd();
 }
 
-void gl_checkerr() 
+void gl_draw_quads(float x, float y, float z, float w, float h)
+{
+	glBegin(GL_QUADS);
+		glTexCoord2f(0, 0); glVertex3f(x, y+h, z);
+		glTexCoord2f(0, 1); glVertex3f(x, y, z);
+		glTexCoord2f(1, 1); glVertex3f(x+w, y, z);
+		glTexCoord2f(1, 0); glVertex3f(x+w, y+h, z);
+	glEnd();
+}
+
+void gl_checkerr(char *msg) 
 {
 	GLenum errCode;
 	const GLubyte *errString;
 
 	if ((errCode = glGetError()) != GL_NO_ERROR) {
 		errString = gluErrorString(errCode);
-		fprintf (stderr, "OpenGL Error: %s\n", errString);
+		fprintf (stderr, "OpenGL Error: %s: %s\n", msg, errString);
 	}
 }
 
@@ -44,7 +55,6 @@ static void display()
 	glClearColor(1, 1, 1, 1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	_disp();
-	glutSwapBuffers();
 }
 
 static void idle()
@@ -57,7 +67,7 @@ static void reshape(int w, int h)
 	glViewport(0, 0, w, h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluOrtho2D(0, 1, 0, 1);
+	gluOrtho2D(-0.5, 0.5, -0.5, 0.5);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	win_w = w;
@@ -81,7 +91,7 @@ void test(int w, int h, void (*_init_)(), void (*_disp_)())
 
 	glutInit(&argc, &argv);
 
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA);
+	glutInitDisplayMode(GLUT_SINGLE | GLUT_DEPTH | GLUT_RGBA);
 
 	win_w = w;
 	win_h = h;
@@ -97,7 +107,7 @@ void test(int w, int h, void (*_init_)(), void (*_disp_)())
 
 	glutReshapeFunc(reshape);
 	glutDisplayFunc(display);
-	glutIdleFunc(idle);
+//	glutIdleFunc(idle);
 	glutKeyboardFunc(keyboard_cb);
 
 	init();
