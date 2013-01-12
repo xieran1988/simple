@@ -14,7 +14,7 @@ old: old.o shader.o yuvtex.o fontex.o rgbtex.o fbotex.o
 	${CC} -o $@ $^ ${LIB}
 
 disp-y:
-	display -depth 8 -size 128x128 /tmp/Y.gray
+	display -depth 8 -size 640x360 /tmp/Y.gray
 	
 disp-u:
 	display -depth 8 -size 64x64 /tmp/U.gray

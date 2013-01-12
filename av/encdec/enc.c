@@ -227,8 +227,9 @@ void mp4enc_write_frame(void *_m, void **yuv, int *linesize, void **sample, int 
 
 	write_video_frame(m, m->oc, m->video_st, yuv, linesize);
 
-	for (i = 0; i < cnt; i++)
+	for (i = 0; i < cnt; i++) {
 		write_audio_frame(m, m->oc, m->audio_st, sample[i]);
+	}
 }
 
 void *mp4enc_openfile(char *filename, int w, int h)

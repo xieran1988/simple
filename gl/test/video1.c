@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 #include <GLUT/glut.h>
 #include <OpenGL/gl.h>
@@ -52,23 +51,6 @@ static void dump(char *name, void *data, int len)
 	rename("/tmp/t", name);
 }
 
-struct {
-	char stat;
-	float pos;
-	int idx;
-	int li, ri;
-	float j;
-} ani;
-
-struct {
-	void *data[3];
-	int line[3];
-} mov[4];
-
-struct {
-	char stat;
-} rec;
-
 static int fps, totfps;
 
 void display()
@@ -87,52 +69,22 @@ void display()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 
-	int i;
-	for (i = 0; i < 4; i++) {
-		if (mp4dec_read_frame(dec[i], mov[i].data, mov[i].line, NULL, NULL)) {
-			mp4dec_seek_precise(dec[i], 0);
-		}
-	}
-
-	if (ani.stat) {
-		if (ani.j < 1) {
-			if (ani.stat == 'r') {
-				ani.pos = sinf(ani.j*3.14/2)*win_w;
-				ani.li = (ani.idx+3)%4;
-				ani.ri = ani.idx;
-			}
-			if (ani.stat == 'l') {
-				ani.pos = (1-sinf(ani.j*3.14/2))*win_w;
-				ani.li = ani.idx;
-				ani.ri = (ani.idx+5)%4;
-			}
-			ani.j += 1./12;
-		} else {
-			ani.j = 0;
-			ani.pos = 0;
-			if (ani.stat == 'r') 
-				ani.idx = ani.li;
-			if (ani.stat == 'l') 
-				ani.idx = ani.ri;
-			ani.stat = 0;
-		}
-	}
+	void *data[3];
+	int line[3];
 
 	fbotex_render_start(fbotex);
-	if (ani.stat) {
-		yuvtex_bind(yuvtex, mov[ani.li].data, mov[ani.li].line);
-		gl_draw_quads(ani.pos-fbotex_w(fbotex), 0, 0, 
-				fbotex_w(fbotex), fbotex_h(fbotex));
-		yuvtex_unbind();
-		yuvtex_bind(yuvtex, mov[ani.ri].data, mov[ani.ri].line);
-		gl_draw_quads(ani.pos, 0, 0, 
-				fbotex_w(fbotex), fbotex_h(fbotex));
-		yuvtex_unbind();
-	} else {
-		yuvtex_bind(yuvtex, mov[ani.idx].data, mov[ani.idx].line);
-		gl_draw_quads(0, 0, 0, fbotex_w(fbotex), fbotex_h(fbotex));
-		yuvtex_unbind();
-	}
+
+	mp4dec_read_frame(dec[0], data, line, NULL, NULL);
+	yuvtex_bind(yuvtex, data, line);
+	gl_draw_quads(0, 0, 0, fbotex_w(fbotex), fbotex_h(fbotex));
+	yuvtex_unbind();
+
+	mp4dec_read_frame(dec[1], data, line, NULL, NULL);
+	yuvtex_bind(yuvtex, data, line);
+	gl_draw_quads(fbotex_w(fbotex)/2, fbotex_h(fbotex)/2, 0.1, 
+			fbotex_w(fbotex), fbotex_h(fbotex));
+	yuvtex_unbind();
+
 	fbotex_render_end(fbotex);
 
 	glViewport(0, 0, win_w, win_h);
@@ -144,16 +96,22 @@ void display()
 
 	glLoadIdentity();
 	glBindTexture(GL_TEXTURE_2D, fbotex_tex(fbotex));
-	gl_draw_quads(win_w/8, win_h/8, 0, win_w/2, win_h/2);
+	gl_draw_quads(0, 0, 0, win_w/2, win_h/2);
 
-	if (rec.stat == 'r') {
-		void *data[3];
-		int line[3];
-		fbotex_getyuv(fbotex, data, line);
-		mp4enc_write_frame(enc, data, line, NULL, 0);
-	}
+	glBindTexture(GL_TEXTURE_2D, fbotex_tex2(fbotex));
+	gl_draw_quads(win_w/2, win_h/2, 0, win_w/2, win_h/2);
+
+	void *data2[3];
+	int line2[3];
+//	fbotex_getyuv(fbotex, data2, line2);
 //	dump("/tmp/Y.gray", data2[0], fbotex_h(fbotex)*line2[0]);
 //	yuv2jpg("/tmp/c.jpg", fbotex_w(fbotex), fbotex_h(fbotex), data2, line2);
+
+//	mp4enc_write_frame(enc, data2, line2, NULL, 0);
+	if (totfps > 24*20) {
+		mp4enc_close(enc);
+		exit(0);
+	}
 
 	glutSwapBuffers();
 }
@@ -183,26 +141,9 @@ void reshape(int w, int h)
 void keyboard_cb(unsigned char key, int x, int y)
 {
 	switch (key) {
-		case 'a':
-			printf("key: a\n");
-			if (!ani.stat) 
-				ani.stat = 'l';
+		case GLUT_KEY_LEFT:
 			break;
-		case 's':
-			printf("key: s\n");
-			if (!ani.stat)
-				ani.stat = 'r';
-			break;
-		case 'r':
-			printf("key: r\n");
-			if (!rec.stat) {
-				rec.stat = 'r';
-				printf("rec: start\n");
-				enc = mp4enc_openfile("/tmp/out.mp4", VIDEO_W, VIDEO_H);
-			} else {
-				printf("rec: stop\n");
-				mp4enc_close(enc);
-			}
+		case GLUT_KEY_RIGHT:
 			break;
 	}
 }
