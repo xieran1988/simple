@@ -10,7 +10,15 @@ LIB += $T/av/util/a.a
 #LIB += $T/gl/shader/shader.o 
 LIB += $T/gl/util/util.o 
 
-old: old.o shader.o yuvtex.o fontex.o
+old: old.o shader.o yuvtex.o fontex.o rgbtex.o
 	${CC} -o $@ $^ ${LIB}
 
-
+disp-y:
+	display -depth 8 -size 128x128 /tmp/Y.gray
+	
+disp-u:
+	display -depth 8 -size 64x64 /tmp/U.gray
+	
+disp-v:
+	display -depth 8 -size 64x64 /tmp/V.gray
+	
