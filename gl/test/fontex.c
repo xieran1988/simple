@@ -7,6 +7,8 @@
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
 
+#include <wchar.h>
+
 #define MAX_GLYPHS 4096
 
 static FT_Library library;
@@ -101,7 +103,7 @@ static void compute_string_bbox(FT_BBox *ret)
 	*ret = bbox;
 }
 
-static debug_dump;
+static int debug_dump;
 
 static void _dump(int i, void *data, int w, int h)
 {

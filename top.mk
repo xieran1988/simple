@@ -40,7 +40,10 @@ A := ar crv
 _all: all
 
 %.o: %.c
-	gcc -I$T -I/opt/libjpeg-turbo/include `freetype-config --cflags` -c -o $@ $< 
+	${CC} -I$T -I/opt/libjpeg-turbo/include `freetype-config --cflags` -c -o $@ $< 
+
+%.o: %.m
+	${CC} -I$T -c -o $@ $<
 
 clean:
 	rm -rf *.o *.a test *.so
