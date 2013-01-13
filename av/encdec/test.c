@@ -3,6 +3,21 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <unistd.h>
+#include <sys/time.h>
+
+static float tm_elapsed()
+{
+	static struct timeval tv, last;
+
+	gettimeofday(&tv, NULL);
+	if (!last.tv_sec && !last.tv_usec) {
+		last = tv;
+		return 0;
+	}
+	float r = tv.tv_sec-last.tv_sec+(tv.tv_usec-last.tv_usec)/1e6;
+	return r;
+}
 
 int main(int argc, char *argv[])
 {
@@ -15,7 +30,7 @@ int main(int argc, char *argv[])
 	mp4enc_loglevel(1);
 
 	if (argc != 2) 
-		return ;
+		return 0;
 
 	int sel = -1;
 	sscanf(argv[1], "%d", &sel);
@@ -29,11 +44,13 @@ int main(int argc, char *argv[])
 			return 0;
 		int w = mp4dec_width(dec);
 		int h = mp4dec_height(dec);
+		printf("w=%d, h=%d\n", w, h);
 		enc = mp4enc_openfile("/tmp/out.mp4", w, h);
 		if (!enc)
 			return 0;
-		int n = 2500;
+		int n = 200;
 		while (n--) {
+			printf("copy %d\n", n);
 			if (mp4dec_read_frame(dec, data, line, sample, &cnt)) 
 				break;
 			mp4enc_write_frame(enc, data, line, sample, cnt);
@@ -74,6 +91,41 @@ int main(int argc, char *argv[])
 				} else 
 					printf("  fail\n");
 			}
+		}
+		mp4enc_close(enc);
+	}
+
+	if (sel == 3) {
+		void *dec;
+		void *enc;
+
+		dec = mp4dec_open("/vid/1.mp4");
+		if (!dec)
+			return 0;
+		int w = mp4dec_width(dec);
+		int h = mp4dec_height(dec);
+		printf("w=%d, h=%d\n", w, h);
+		enc = mp4enc_openrtmp("rtmp://localhost/myapp/1", w, h);
+		if (!enc)
+			return 0;
+		int i, j;
+		i = 0;
+		while (1) {
+			float t = tm_elapsed();
+			float delta = i*1./24 - t;
+			if (delta > 0) {
+				usleep((int)(delta*1e6));
+				printf("wait\n");
+				continue;
+			}
+			printf("copy %d %.2f\n", i, t);
+			for (j = 0; j < 10; j++) {
+				if (!mp4dec_read_frame(dec, data, line, sample, &cnt)) 
+					break;
+			}
+			mp4enc_setpts(enc, t);
+			mp4enc_write_frame(enc, data, line, sample, 0);
+			i++;
 		}
 		mp4enc_close(enc);
 	}

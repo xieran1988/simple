@@ -76,6 +76,12 @@ struct {
 
 static int fps, totfps;
 
+static float tm_elapsed()
+{
+	GLuint tm = glutGet(GLUT_ELAPSED_TIME);
+	return tm/1000.;
+}
+
 void display()
 {
 	fps++;
@@ -175,6 +181,13 @@ void display()
 		fbotex_getyuv(fbotex, data, line);
 		mp4enc_write_frame(enc, data, line, NULL, 0);
 	}
+	if (rec.stat == 't') {
+		void *data[3];
+		int line[3];
+		fbotex_getyuv(fbotex, data, line);
+		mp4enc_setpts(enc, tm_elapsed());
+		mp4enc_write_frame(enc, data, line, NULL, 0);
+	}
 //	dump("/tmp/Y.gray", data2[0], fh*line2[0]);
 //	yuv2jpg("/tmp/c.jpg", fw, fh, data2, line2);
 
@@ -186,15 +199,12 @@ void idle()
 	GLuint tm = glutGet(GLUT_ELAPSED_TIME);
 	static GLuint lasttm, lasttm2;
 
-	glutPostRedisplay();
-	/*
-	if (tm - lasttm > 1000./24) {
+	if (tm - lasttm > 1000./30) {
 		glutPostRedisplay();
 		lasttm = tm;
 	}
-	*/
 	if (tm - lasttm2 > 1000) {
-		printf("fps: %d\n", fps);
+		printf("fps: %d tm: %.2f\n", fps, tm/1000.);
 		fps = 0;
 		lasttm2 = tm;
 	}
@@ -228,6 +238,18 @@ void keyboard_cb(unsigned char key, int x, int y)
 			} else {
 				rec.stat = 0;
 				printf("rec: stop\n");
+				mp4enc_close(enc);
+			}
+			break;
+		case 't':
+			if (!rec.stat) {
+				enc = mp4enc_openrtmp("rtmp://localhost/myapp/1", FBO_W, FBO_H);
+				//mp4enc_loglevel(1);
+				rec.stat = 't';
+				printf("rtmp: start\n");
+			} else {
+				rec.stat = 0;
+				printf("rtmp: end\n");
 				mp4enc_close(enc);
 			}
 			break;

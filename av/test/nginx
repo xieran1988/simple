@@ -1,0 +1,24 @@
+#!/bin/bash
+
+start() {
+	sudo nginx -c /cfg/nginx.conf
+}
+
+stop() {
+	sudo pkill nginx
+}
+
+[ "$1" = "start" ] && {
+	start
+}
+
+[ "$1" = "stop" ] && {
+	stop
+}
+
+[ "$1" = "restart" ] && {
+	stop
+	start
+}
+
+

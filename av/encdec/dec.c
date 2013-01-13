@@ -72,7 +72,7 @@ static void _dump_audio(char *fname, void *data, int len)
 	fflush(fp);
 }
 
-static _dump_yuv(mp4dec_t *m, char *prefix)
+static void _dump_yuv(mp4dec_t *m, char *prefix)
 {
 	int *linesize = m->frm_h264->linesize;
 	char path[256];
