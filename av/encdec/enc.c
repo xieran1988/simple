@@ -2,6 +2,7 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
+#include <libavutil/mathematics.h>
 #include <libavutil/dict.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -145,8 +146,10 @@ static int open_video(AVFormatContext *oc, AVStream *st)
 		return 1;
 	}
 
-	av_dict_set(&opt, "preset", "ultrafast", 0);
-	av_dict_set(&opt, "tune", "zerolatency", 0);
+//	av_dict_set(&opt, "preset", "ultrafast", 0);
+	av_dict_set(&opt, "profile", "main", 0);
+//	av_dict_set(&opt, "preset", "medium", 0);
+//	av_dict_set(&opt, "tune", "zerolatency", 0);
 	if (avcodec_open2(c, NULL, &opt) < 0) {
 		dbp(0, "  could not open video codec\n");
 		return 1;

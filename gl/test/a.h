@@ -21,7 +21,7 @@ int fbotex_h(void *_m);
 GLuint fbotex_tex(void *_m);
 GLuint fbotex_tex2(void *_m);
 void fbotex_getyuv(void *_m, void **data, int *line);
-void fbotex_test(void *_m);
+void fbotex_set(void *_m, char *fmt, ...);
 
 void *mmap_file(char *filename, int *len);
 void munmap_file(void *p, int len);

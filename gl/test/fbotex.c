@@ -10,6 +10,7 @@ typedef struct {
 	GLuint tex[2], fb, fb2, dph, dph2;
 	GLuint prog, loc[3];
 	uint8_t *data;
+	char noreadpix;
 } fbotex_t ;
 
 void *fbotex_new(int w, int h) 
@@ -128,6 +129,18 @@ int fbotex_h(void *_m)
 	return m->h;
 }
 
+void fbotex_set(void *_m, char *fmt, ...)
+{
+	fbotex_t *m = (fbotex_t *)_m;
+
+	if (!strcmp(fmt, "noreadpix")) {
+		m->noreadpix = 1;
+	}
+	if (!strcmp(fmt, "readpix")) {
+		m->noreadpix = 0;
+	}
+}
+
 void fbotex_getyuv(void *_m, void **data, int *line)
 {
 	fbotex_t *m = (fbotex_t *)_m;
@@ -135,10 +148,12 @@ void fbotex_getyuv(void *_m, void **data, int *line)
 	if (!m->data) 
 		m->data = malloc(m->w*m->h*4);
 
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m->fb);
-	glReadBuffer(GL_COLOR_ATTACHMENT1);
-	glReadPixels(0, 0, m->w, ceil(m->h*0.375), GL_RGBA, GL_UNSIGNED_BYTE, m->data);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	if (!m->noreadpix) {
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m->fb);
+		glReadBuffer(GL_COLOR_ATTACHMENT1);
+		glReadPixels(0, 0, m->w, ceil(m->h*0.375), GL_RGBA, GL_UNSIGNED_BYTE, m->data);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	}
 
 //	glBindTexture(GL_TEXTURE_2D, m->tex[1]);
 //	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, m->data);

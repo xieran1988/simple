@@ -15,8 +15,8 @@
 #define VIDEO_W 640
 #define VIDEO_H 360
 
-#define FBO_W 1920
-#define FBO_H 1080 
+#define FBO_W 1280
+#define FBO_H 720
 
 static GLuint rgbtex, pictex;
 void *yuvtex, *fbotex;
@@ -53,6 +53,7 @@ static void dump(char *name, void *data, int len)
 
 struct {
 	char stat;
+	char s1;
 	float pos;
 	int idx;
 	int li, ri;
@@ -70,6 +71,7 @@ struct {
 
 struct {
 	char nodisp;
+	char noreadpix;
 } mon;
 
 static int fps, totfps;
@@ -97,15 +99,18 @@ void display()
 		}
 	}
 
-	if (ani.stat) {
+	int fw = fbotex_w(fbotex);
+	int fh = fbotex_h(fbotex);
+
+	if (ani.stat == 'l' || ani.stat == 'r') {
 		if (ani.j < 1) {
 			if (ani.stat == 'r') {
-				ani.pos = sinf(ani.j*3.14/2)*fbotex_w(fbotex);
+				ani.pos = sinf(ani.j*3.14/2)*fw;
 				ani.li = (ani.idx+3)%4;
 				ani.ri = ani.idx;
 			}
 			if (ani.stat == 'l') {
-				ani.pos = (1-sinf(ani.j*3.14/2))*fbotex_w(fbotex);
+				ani.pos = (1-sinf(ani.j*3.14/2))*fw;
 				ani.li = ani.idx;
 				ani.ri = (ani.idx+5)%4;
 			}
@@ -122,18 +127,31 @@ void display()
 	}
 
 	fbotex_render_start(fbotex);
-	if (ani.stat) {
+	if (ani.stat == 'l' || ani.stat == 'r') {
 		yuvtex_bind(yuvtex, mov[ani.li].data, mov[ani.li].line);
-		gl_draw_quads(ani.pos-fbotex_w(fbotex), 0, 0, 
-				fbotex_w(fbotex), fbotex_h(fbotex));
+		gl_draw_quads(ani.pos-fw, 0, 0, fw, fh);
 		yuvtex_unbind();
 		yuvtex_bind(yuvtex, mov[ani.ri].data, mov[ani.ri].line);
-		gl_draw_quads(ani.pos, 0, 0, 
-				fbotex_w(fbotex), fbotex_h(fbotex));
+		gl_draw_quads(ani.pos, 0, 0, fw, fh);
 		yuvtex_unbind();
-	} else {
+	} 
+	if (ani.stat == '4') {
+		yuvtex_bind(yuvtex, mov[0].data, mov[0].line);
+			gl_draw_quads(0, 0, 0, fw/2, fh/2);
+		yuvtex_unbind();
+		yuvtex_bind(yuvtex, mov[1].data, mov[1].line);
+			gl_draw_quads(fw/2, 0, 0, fw/2, fh/2);
+		yuvtex_unbind();
+		yuvtex_bind(yuvtex, mov[2].data, mov[2].line);
+			gl_draw_quads(0, fh/2, 0, fw/2, fh/2);
+		yuvtex_unbind();
+		yuvtex_bind(yuvtex, mov[3].data, mov[3].line);
+			gl_draw_quads(fw/2, fh/2, 0, fw/2, fh/2);
+		yuvtex_unbind();
+	}
+	if (!ani.stat) {
 		yuvtex_bind(yuvtex, mov[ani.idx].data, mov[ani.idx].line);
-		gl_draw_quads(0, 0, 0, fbotex_w(fbotex), fbotex_h(fbotex));
+		gl_draw_quads(0, 0, 0, fw, fh);
 		yuvtex_unbind();
 	}
 	fbotex_render_end(fbotex);
@@ -157,8 +175,8 @@ void display()
 		fbotex_getyuv(fbotex, data, line);
 		mp4enc_write_frame(enc, data, line, NULL, 0);
 	}
-//	dump("/tmp/Y.gray", data2[0], fbotex_h(fbotex)*line2[0]);
-//	yuv2jpg("/tmp/c.jpg", fbotex_w(fbotex), fbotex_h(fbotex), data2, line2);
+//	dump("/tmp/Y.gray", data2[0], fh*line2[0]);
+//	yuv2jpg("/tmp/c.jpg", fw, fh, data2, line2);
 
 	glutSwapBuffers();
 }
@@ -208,6 +226,7 @@ void keyboard_cb(unsigned char key, int x, int y)
 				printf("rec: start\n");
 				enc = mp4enc_openfile("/tmp/out.mp4", FBO_W, FBO_H);
 			} else {
+				rec.stat = 0;
 				printf("rec: stop\n");
 				mp4enc_close(enc);
 			}
@@ -215,6 +234,18 @@ void keyboard_cb(unsigned char key, int x, int y)
 		case 'n':
 			printf("key: n\n");
 			mon.nodisp ^= 1;
+			break;
+		case 'm':
+			printf("key: m\n");
+			mon.noreadpix ^= 1;
+			fbotex_set(fbotex, mon.noreadpix ? "noreadpix" : "readpix");
+			break;
+		case '4':
+			printf("key: 4\n");
+			if (!ani.stat)
+				ani.stat = '4';
+			else
+				ani.stat = 0;
 			break;
 	}
 }
