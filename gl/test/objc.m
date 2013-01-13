@@ -1,5 +1,6 @@
 
 #include <av/encdec/a.h>
+#include "a.h"
 
 #include <stdio.h>         // for error output 
 #import <OpenGL/OpenGL.h> 
@@ -36,6 +37,14 @@ int main (int argc, char * const argv[])
 	NULL_ERROR_EXIT(openGLContext, "Unable to create NSOpenGLContext");
 
 	[openGLContext makeCurrentContext];
+
+	all_init(640, 360);
+
+	all_ctrl("t");
+	while (1) 
+		all_render();
+
+	/*
 
 	const GLubyte* strExt = glGetString(GL_EXTENSIONS); 
 	GLboolean fboSupported = gluCheckExtension((const GLubyte*)"GL_EXT_framebuffer_object", strExt); 
@@ -157,6 +166,8 @@ int main (int argc, char * const argv[])
 	CFRelease(imageProps); 
 	CGColorSpaceRelease( colorSpace ); 
 	CGImageRelease(imageRef); 
+
+	*/
 
 	[openGLContext clearDrawable]; 
 	[openGLContext release]; 

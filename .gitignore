@@ -2,4 +2,4 @@
 *.a
 *.swp
 *.so
-*_test
+*test

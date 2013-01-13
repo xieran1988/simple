@@ -61,5 +61,7 @@ int yuv2jpg(char *path, int w, int h, void **_data, int *line)
 	jpeg_finish_compress(&cinfo);
 	fclose(outfile);
 	jpeg_destroy_compress(&cinfo);
+
+	return 0;
 }
 

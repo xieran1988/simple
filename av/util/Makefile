@@ -3,7 +3,7 @@ include ../../top.mk
 
 all: a.a genpic test
 
-a.a: yuv.o yuvjpg.o
+a.a: yuv.o yuvjpg.o a.o
 	$A $@ $^
 
 genpic: genpic.o yuvjpg.o

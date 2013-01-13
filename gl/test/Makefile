@@ -1,16 +1,20 @@
 
 include ../../top.mk
 
-all: old
+all: test objc_test a.a
 
 LIB := ${GLLIB} ${AVLIB} ${FTLIB} ${JPGLIB}
 LIB += $T/av/encdec/a.a 
 LIB += $T/av/util/a.a 
-#LIB += $T/gl/vid/vid.o 
-#LIB += $T/gl/shader/shader.o 
 LIB += $T/gl/util/util.o 
 
-old: old.o shader.o yuvtex.o fontex.o rgbtex.o fbotex.o utils.o
+a.a: shader.o yuvtex.o fontex.o rgbtex.o fbotex.o utils.o a.o
+	$A $@ $^ 
+
+test: test.o a.a
+	${CC} -o $@ $^ ${LIB}
+
+objc_test: objc.o a.a
 	${CC} -o $@ $^ ${LIB}
 
 disp-y:

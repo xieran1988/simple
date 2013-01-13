@@ -1,23 +1,10 @@
 
 #include "a.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <unistd.h>
-#include <sys/time.h>
-
-static float tm_elapsed()
-{
-	static struct timeval tv, last;
-
-	gettimeofday(&tv, NULL);
-	if (!last.tv_sec && !last.tv_usec) {
-		last = tv;
-		return 0;
-	}
-	float r = tv.tv_sec-last.tv_sec+(tv.tv_usec-last.tv_usec)/1e6;
-	return r;
-}
 
 int main(int argc, char *argv[])
 {

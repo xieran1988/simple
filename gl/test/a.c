@@ -3,10 +3,6 @@
 #include <string.h>
 #include <math.h>
 
-#include <GLUT/glut.h>
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-
 #include <av/encdec/a.h>
 #include <av/util/a.h>
 
@@ -15,16 +11,19 @@
 #define VIDEO_W 640
 #define VIDEO_H 360
 
-#define FBO_W 1280
-#define FBO_H 720
+#define FBO_W 640
+#define FBO_H 360
 
 static GLuint rgbtex, pictex;
 void *yuvtex, *fbotex;
 void *dec[4], *enc;
 int win_w, win_h;
 
-void init()
+void all_init(int w, int h)
 {
+	win_w = w;
+	win_h = h;
+
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_TEXTURE_2D);
@@ -32,7 +31,7 @@ void init()
 	glDepthRange(0, 1);
 	glDepthFunc(GL_LEQUAL);
 	
-	yuvtex = yuvtex_new(VIDEO_W, VIDEO_H);
+	yuvtex = yuvtex_new(win_w, win_h);
 	fbotex = fbotex_new(FBO_W, FBO_H);
 	rgbtex = sample_rgb_tex(64, 64);
 	pictex = load_rgb_tex("128x128.rgb", 128, 128);
@@ -74,18 +73,9 @@ struct {
 	char noreadpix;
 } mon;
 
-static int fps, totfps;
-
-static float tm_elapsed()
+void all_render()
 {
-	GLuint tm = glutGet(GLUT_ELAPSED_TIME);
-	return tm/1000.;
-}
-
-void display()
-{
-	fps++;
-	totfps++;
+	printf("render\n");
 
 	glViewport(0, 0, win_w, win_h);
 	glMatrixMode(GL_PROJECTION);
@@ -191,33 +181,12 @@ void display()
 //	dump("/tmp/Y.gray", data2[0], fh*line2[0]);
 //	yuv2jpg("/tmp/c.jpg", fw, fh, data2, line2);
 
-	glutSwapBuffers();
 }
 
-void idle()
+void all_ctrl(char *fmt, ...)
 {
-	GLuint tm = glutGet(GLUT_ELAPSED_TIME);
-	static GLuint lasttm, lasttm2;
+	char key = *fmt;
 
-	if (tm - lasttm > 1000./30) {
-		glutPostRedisplay();
-		lasttm = tm;
-	}
-	if (tm - lasttm2 > 1000) {
-		printf("fps: %d tm: %.2f\n", fps, tm/1000.);
-		fps = 0;
-		lasttm2 = tm;
-	}
-}
-
-void reshape(int w, int h)
-{
-	win_w = w;
-	win_h = h;
-}
-
-void keyboard_cb(unsigned char key, int x, int y)
-{
 	switch (key) {
 		case 'a':
 			printf("key: a\n");
@@ -270,31 +239,5 @@ void keyboard_cb(unsigned char key, int x, int y)
 				ani.stat = 0;
 			break;
 	}
-}
-
-int main(int argc, char **argv)
-{
-	glutInit(&argc, argv);
-
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA);
-
-	win_w = VIDEO_W;
-	win_h = VIDEO_H;
-
-	glutInitWindowSize(win_w, win_h);
-	glutInitWindowPosition(0, 0);
-
-	glutCreateWindow("Pixies");
-
-	glutReshapeFunc(reshape);
-	glutDisplayFunc(display);
-	glutIdleFunc(idle);
-	glutKeyboardFunc(keyboard_cb);
-
-	init();
-
-	glutMainLoop();
-
-	return 0;
 }
 
