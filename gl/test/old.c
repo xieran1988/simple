@@ -15,8 +15,8 @@
 #define VIDEO_W 640
 #define VIDEO_H 360
 
-#define FBO_W 128
-#define FBO_H 128
+#define FBO_W 1920
+#define FBO_H 1080 
 
 static GLuint rgbtex, pictex;
 void *yuvtex, *fbotex;
@@ -33,7 +33,7 @@ void init()
 	glDepthFunc(GL_LEQUAL);
 	
 	yuvtex = yuvtex_new(VIDEO_W, VIDEO_H);
-	fbotex = fbotex_new(VIDEO_W, VIDEO_H);
+	fbotex = fbotex_new(FBO_W, FBO_H);
 	rgbtex = sample_rgb_tex(64, 64);
 	pictex = load_rgb_tex("128x128.rgb", 128, 128);
 
@@ -41,7 +41,6 @@ void init()
 	dec[1] = mp4dec_open("/vid/2.mp4");
 	dec[2] = mp4dec_open("/vid/3.mp4");
 	dec[3] = mp4dec_open("/vid/4.mp4");
-	enc = mp4enc_openfile("/tmp/out.mp4", VIDEO_W, VIDEO_H);
 }
 
 static void dump(char *name, void *data, int len)
@@ -68,6 +67,10 @@ struct {
 struct {
 	char stat;
 } rec;
+
+struct {
+	char nodisp;
+} mon;
 
 static int fps, totfps;
 
@@ -97,12 +100,12 @@ void display()
 	if (ani.stat) {
 		if (ani.j < 1) {
 			if (ani.stat == 'r') {
-				ani.pos = sinf(ani.j*3.14/2)*win_w;
+				ani.pos = sinf(ani.j*3.14/2)*fbotex_w(fbotex);
 				ani.li = (ani.idx+3)%4;
 				ani.ri = ani.idx;
 			}
 			if (ani.stat == 'l') {
-				ani.pos = (1-sinf(ani.j*3.14/2))*win_w;
+				ani.pos = (1-sinf(ani.j*3.14/2))*fbotex_w(fbotex);
 				ani.li = ani.idx;
 				ani.ri = (ani.idx+5)%4;
 			}
@@ -142,9 +145,11 @@ void display()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	glLoadIdentity();
-	glBindTexture(GL_TEXTURE_2D, fbotex_tex(fbotex));
-	gl_draw_quads(win_w/8, win_h/8, 0, win_w/2, win_h/2);
+	if (!mon.nodisp) {
+		glLoadIdentity();
+		glBindTexture(GL_TEXTURE_2D, fbotex_tex(fbotex));
+		gl_draw_quads(win_w/8, win_h/8, 0, win_w/2, win_h/2);
+	}
 
 	if (rec.stat == 'r') {
 		void *data[3];
@@ -163,10 +168,13 @@ void idle()
 	GLuint tm = glutGet(GLUT_ELAPSED_TIME);
 	static GLuint lasttm, lasttm2;
 
+	glutPostRedisplay();
+	/*
 	if (tm - lasttm > 1000./24) {
 		glutPostRedisplay();
 		lasttm = tm;
 	}
+	*/
 	if (tm - lasttm2 > 1000) {
 		printf("fps: %d\n", fps);
 		fps = 0;
@@ -198,11 +206,15 @@ void keyboard_cb(unsigned char key, int x, int y)
 			if (!rec.stat) {
 				rec.stat = 'r';
 				printf("rec: start\n");
-				enc = mp4enc_openfile("/tmp/out.mp4", VIDEO_W, VIDEO_H);
+				enc = mp4enc_openfile("/tmp/out.mp4", FBO_W, FBO_H);
 			} else {
 				printf("rec: stop\n");
 				mp4enc_close(enc);
 			}
+			break;
+		case 'n':
+			printf("key: n\n");
+			mon.nodisp ^= 1;
 			break;
 	}
 }

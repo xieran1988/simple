@@ -3,10 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 typedef struct {
 	int w, h;
-	GLuint tex[2], fb, dph;
+	GLuint tex[2], fb, fb2, dph, dph2;
 	GLuint prog, loc[3];
 	uint8_t *data;
 } fbotex_t ;
@@ -90,13 +91,11 @@ void fbotex_render_start(void *_m)
 	glOrtho(0.0, m->w, 0.0, m->h, -1.0, 1.0); 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-
 	GLenum buffers[] = { 
 		GL_COLOR_ATTACHMENT0_EXT, 
 		GL_COLOR_ATTACHMENT1_EXT,
 	}; 
 	glDrawBuffers(2, buffers); 
-
 	glLoadIdentity();
 }
 
@@ -136,8 +135,13 @@ void fbotex_getyuv(void *_m, void **data, int *line)
 	if (!m->data) 
 		m->data = malloc(m->w*m->h*4);
 
-	glBindTexture(GL_TEXTURE_2D, m->tex[1]);
-	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, m->data);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m->fb);
+	glReadBuffer(GL_COLOR_ATTACHMENT1);
+	glReadPixels(0, 0, m->w, ceil(m->h*0.375), GL_RGBA, GL_UNSIGNED_BYTE, m->data);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+//	glBindTexture(GL_TEXTURE_2D, m->tex[1]);
+//	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, m->data);
 
 	line[0] = m->w;
 	line[1] = m->w/2;
@@ -145,6 +149,8 @@ void fbotex_getyuv(void *_m, void **data, int *line)
 	data[0] = m->data;
 	data[1] = m->data + line[0]*m->h;
 	data[2] = m->data + line[0]*m->h + line[1]*m->h/2;
+
+//	dump_file("/tmp/Y.gray", data[0], line[0]*m->h);
 }
 
 GLuint fbotex_tex(void *_m)

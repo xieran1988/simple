@@ -10,7 +10,7 @@ LIB += $T/av/util/a.a
 #LIB += $T/gl/shader/shader.o 
 LIB += $T/gl/util/util.o 
 
-old: old.o shader.o yuvtex.o fontex.o rgbtex.o fbotex.o
+old: old.o shader.o yuvtex.o fontex.o rgbtex.o fbotex.o utils.o
 	${CC} -o $@ $^ ${LIB}
 
 disp-y:
