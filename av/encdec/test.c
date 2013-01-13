@@ -6,6 +6,8 @@
 #include <math.h>
 #include <unistd.h>
 
+#include <av/util/a.h>
+
 int main(int argc, char *argv[])
 {
 	void *data[3];
@@ -86,7 +88,7 @@ int main(int argc, char *argv[])
 		void *dec;
 		void *enc;
 
-		dec = mp4dec_open("/vid/1.mp4");
+		dec = mp4dec_open("/vid/2.mp4");
 		if (!dec)
 			return 0;
 		int w = mp4dec_width(dec);

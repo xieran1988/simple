@@ -51,12 +51,16 @@ static void dump(char *name, void *data, int len)
 }
 
 struct {
-	char stat;
+	char stat[4];
 	char s1;
 	float pos;
 	int idx;
 	int li, ri;
 	float j;
+	float x[4];
+	float y[4];
+	float w[4];
+	float h[4];
 } ani;
 
 struct {
@@ -75,8 +79,6 @@ struct {
 
 void all_render()
 {
-	printf("render\n");
-
 	glViewport(0, 0, win_w, win_h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -98,14 +100,14 @@ void all_render()
 	int fw = fbotex_w(fbotex);
 	int fh = fbotex_h(fbotex);
 
-	if (ani.stat == 'l' || ani.stat == 'r') {
+	if (ani.stat[0] == 'l' || ani.stat[0] == 'r') {
 		if (ani.j < 1) {
-			if (ani.stat == 'r') {
+			if (ani.stat[0] == 'r') {
 				ani.pos = sinf(ani.j*3.14/2)*fw;
 				ani.li = (ani.idx+3)%4;
 				ani.ri = ani.idx;
 			}
-			if (ani.stat == 'l') {
+			if (ani.stat[0] == 'l') {
 				ani.pos = (1-sinf(ani.j*3.14/2))*fw;
 				ani.li = ani.idx;
 				ani.ri = (ani.idx+5)%4;
@@ -114,42 +116,81 @@ void all_render()
 		} else {
 			ani.j = 0;
 			ani.pos = 0;
-			if (ani.stat == 'r') 
+			if (ani.stat[0] == 'r') 
 				ani.idx = ani.li;
-			if (ani.stat == 'l') 
+			if (ani.stat[0] == 'l') 
 				ani.idx = ani.ri;
-			ani.stat = 0;
+			ani.stat[0] = 0;
+		}
+	}
+
+	if (ani.stat[0] == '4' && ani.stat[1]) {
+		if (ani.j < 1) {
+			ani.j += 1./12;
+			if (ani.stat[1] == 'i')
+				ani.pos = 1-sinf(ani.j*3.14/2);
+			else
+				ani.pos = sinf(ani.j*3.14/2);
+		} else {
+			ani.j = 0;
+			ani.pos = 0;
+			if (ani.stat[1] == 'i') {
+				ani.stat[0] = '4';
+				ani.stat[1] = 0;
+			} else {
+				ani.stat[0] = 0;
+				ani.stat[1] = 0;
+			}
 		}
 	}
 
 	fbotex_render_start(fbotex);
-	if (ani.stat == 'l' || ani.stat == 'r') {
+
+	if (ani.stat[0] == 'l' || ani.stat[0] == 'r') {
 		yuvtex_bind(yuvtex, mov[ani.li].data, mov[ani.li].line);
 		gl_draw_quads(ani.pos-fw, 0, 0, fw, fh);
 		yuvtex_unbind();
 		yuvtex_bind(yuvtex, mov[ani.ri].data, mov[ani.ri].line);
 		gl_draw_quads(ani.pos, 0, 0, fw, fh);
 		yuvtex_unbind();
-	} 
-	if (ani.stat == '4') {
-		yuvtex_bind(yuvtex, mov[0].data, mov[0].line);
-			gl_draw_quads(0, 0, 0, fw/2, fh/2);
-		yuvtex_unbind();
-		yuvtex_bind(yuvtex, mov[1].data, mov[1].line);
-			gl_draw_quads(fw/2, 0, 0, fw/2, fh/2);
-		yuvtex_unbind();
-		yuvtex_bind(yuvtex, mov[2].data, mov[2].line);
-			gl_draw_quads(0, fh/2, 0, fw/2, fh/2);
-		yuvtex_unbind();
-		yuvtex_bind(yuvtex, mov[3].data, mov[3].line);
-			gl_draw_quads(fw/2, fh/2, 0, fw/2, fh/2);
-		yuvtex_unbind();
 	}
-	if (!ani.stat) {
+
+	float mx[] = {0, fw/2, 0, fw/2};
+	float my[] = {0, 0, fh/2, fh/2};
+	float mz[] = {0, 0, 0, 0};
+	float mw[] = {fw/2, fw/2, fw/2, fw/2};
+	float mh[] = {fh/2, fh/2, fh/2, fh/2};
+
+	if (ani.stat[0] == '4') {
+	//	printf("4: [%c]\n", ani.stat[1]);
+		if (ani.stat[1]) {
+			mz[ani.idx] = 0.1;
+			mw[ani.idx] *= 1+ani.pos;
+			mh[ani.idx] *= 1+ani.pos;
+			if (ani.idx == 1) {
+				mx[1] *= 1-ani.pos;
+			}
+			if (ani.idx == 2) {
+				my[2] *= 1-ani.pos;
+			}
+			if (ani.idx == 3) {
+				mx[3] *= 1-ani.pos;
+				my[3] *= 1-ani.pos;
+			}
+		}
+		for (i = 0; i < 4; i++) {
+			yuvtex_bind(yuvtex, mov[i].data, mov[i].line);
+			gl_draw_quads(mx[i], my[i], mz[i], mw[i], mh[i]);
+			yuvtex_unbind();
+		}
+	}
+
+	if (!ani.stat[0]) {
 		yuvtex_bind(yuvtex, mov[ani.idx].data, mov[ani.idx].line);
 		gl_draw_quads(0, 0, 0, fw, fh);
 		yuvtex_unbind();
 	}
+
 	fbotex_render_end(fbotex);
 
 	glViewport(0, 0, win_w, win_h);
@@ -190,13 +231,13 @@ void all_ctrl(char *fmt, ...)
 	switch (key) {
 		case 'a':
 			printf("key: a\n");
-			if (!ani.stat) 
-				ani.stat = 'l';
+			if (!ani.stat[0])
+				ani.stat[0] = 'r';
 			break;
 		case 's':
 			printf("key: s\n");
-			if (!ani.stat)
-				ani.stat = 'r';
+			if (!ani.stat[0]) 
+				ani.stat[0] = 'l';
 			break;
 		case 'r':
 			printf("key: r\n");
@@ -233,10 +274,12 @@ void all_ctrl(char *fmt, ...)
 			break;
 		case '4':
 			printf("key: 4\n");
-			if (!ani.stat)
-				ani.stat = '4';
-			else
-				ani.stat = 0;
+			if (!ani.stat[0]) {
+				ani.stat[0] = '4';
+				ani.stat[1] = 'i';
+			} else if (ani.stat[0] == '4') {
+				ani.stat[1] = 'o';
+			}
 			break;
 	}
 }
