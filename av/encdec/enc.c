@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 
 #include <libavcodec/avcodec.h>
@@ -14,17 +13,15 @@
 
 #include "a.h"
 
-static int inited;
 
 typedef struct {
 	uint8_t audio_outbuf[10000];
 	AVFormatContext *oc;
 	AVStream *audio_st, *video_st;
 	AVFrame *audio_frm, *video_frm;
-	float pos;
-	int64_t pts;
-	int frmcnt;
 	char *opt;
+	float tmstart;
+	int vcnt, acnt;
 } mp4enc_t;
 
 #define M(_m) ((mp4enc_t *)_m)
@@ -47,12 +44,35 @@ void mp4enc_loglevel(int lev)
 
 static void _init() 
 {
-	if (!inited) {
-		av_register_all();
-		avformat_network_init();
-	//	av_log_set_level(AV_LOG_DEBUG);
-		inited++;
-	}
+	static int a;
+	if (a++)
+		return ;
+
+	av_register_all();
+	avformat_network_init();
+	//av_log_set_level(AV_LOG_DEBUG);
+}
+	
+const float afps = 44100./1024;
+
+static inline float video_cnt2tm(int c) 
+{
+	return c/25.;
+}
+
+static inline float audio_cnt2tm(int c)
+{
+	return c/afps;
+}
+
+static inline int video_tm2cnt(float tm)
+{
+	return floor(tm/25)*25;
+}
+
+static inline float audio_tm2cnt(float tm)
+{
+	return floor(tm/afps)*afps;
 }
 
 static AVStream *add_video_stream(mp4enc_t *m, AVFormatContext *oc, enum CodecID codec_id, int w, int h)
@@ -80,13 +100,8 @@ static AVStream *add_video_stream(mp4enc_t *m, AVFormatContext *oc, enum CodecID
 	c->bit_rate = 400000;
 	c->width = w;
 	c->height = h;
-	if (strstr(m->opt, "rtmp")) {
-		c->time_base.den = 1000;
-		c->time_base.num = 1;
-	} else {
-		c->time_base.den = 25;
-		c->time_base.num = 1;
-	}
+	c->time_base.den = 1000;
+	c->time_base.num = 1;
 	c->gop_size = 12; 
 	c->pix_fmt = PIX_FMT_YUV420P;
 
@@ -190,37 +205,19 @@ static void write_audio_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, ui
 	m->audio_frm->data[0] = samples;
 	m->audio_frm->data[1] = samples + 4096;
 	m->audio_frm->linesize[0] = 8192;
-	dbp(0, "  audio: write %p %p %d,%d\n", samples, 
-			m->audio_frm,
-			m->audio_frm->linesize[0],
-			m->audio_frm->linesize[1]
-			);
+	m->audio_frm->pts = audio_cnt2tm(m->acnt)*1000;
 
 	r = avcodec_encode_audio2(c, &pkt, m->audio_frm, &got);
-	dbp(0, "  audio: encode %d got=%d size=%d\n", r, got, pkt.size);
+	dbp(0, "  audio: encode %d got=%d size=%d pts=%lld\n", 
+			r, got, pkt.size, pkt.pts);
 
-//	if (c->coded_frame && c->coded_frame->pts != AV_NOPTS_VALUE)
-//		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base, st->time_base);
-	if (strstr(m->opt, "rtmp")) {
-		pkt.pts = m->pts;
-		m->pts += 1000/43;
-	}
-
-	dbp(0, "  audio: pts=%lld\n", pkt.pts);
-	//pkt.flags |= AV_PKT_FLAG_KEY;
 	pkt.stream_index = st->index;
 
 	r = av_interleaved_write_frame(oc, &pkt);
-	dbp(0, "  audio: frame %d size=%d\n", r, pkt.size);
+//	dbp(0, "  audio: frame %d size=%d\n", r, pkt.size);
 }
 
-void mp4enc_setpts(void *_m, float pos)
-{
-	mp4enc_t *m = M(_m);
-	m->pts = (int64_t)(pos*1000);
-}
-
-static void write_video_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, void **yuv, int *linesize)
+static int write_video_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, void **yuv, int *linesize)
 {
 	AVPacket pkt = {};
 	int r, i, got;
@@ -230,11 +227,7 @@ static void write_video_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, vo
 		m->video_frm->linesize[i] = linesize[i];
 	}
 
-	if (strstr(m->opt, "rtmp")) {
-		m->video_frm->pts = m->pts;
-	}
-//	m->pts = (int)(m->frmcnt*1000./24);
-//	m->frmcnt++;
+	m->video_frm->pts = video_cnt2tm(m->vcnt)*1000;
 
 	av_init_packet(&pkt);
 
@@ -245,9 +238,23 @@ static void write_video_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, vo
 	if (pkt.size > 0) {
 		pkt.stream_index = st->index;
 		r = av_interleaved_write_frame(oc, &pkt);
-		dbp(0, "  video: write=%d\n", r);
+//		dbp(0, "  video: write=%d\n", r);
 		av_free_packet(&pkt);
 	}
+
+	return 1;
+}
+
+void mp4enc_getdelta(void *_m, float *vpos, float *apos)
+{
+	mp4enc_t *m = M(_m);
+
+	float tm = tm_elapsed() - m->tmstart;
+
+	if (vpos)
+		*vpos = video_cnt2tm(m->vcnt) - tm;
+	if (apos)
+		*apos = audio_cnt2tm(m->acnt) - tm;
 }
 
 void mp4enc_write_frame(void *_m, void **yuv, int *linesize, void **sample, int cnt)
@@ -255,17 +262,36 @@ void mp4enc_write_frame(void *_m, void **yuv, int *linesize, void **sample, int 
 	mp4enc_t *m = M(_m);
 	int i;
 
-	dbp(0, "write frame: sample=%d\n", cnt);
+	float tm = tm_elapsed() - m->tmstart;
+	float vpos = video_cnt2tm(m->vcnt);
+	float apos = audio_cnt2tm(m->acnt);
 
-	write_video_frame(m, m->oc, m->video_st, yuv, linesize);
+	dbp(0, "write frame: tm %.2f vpos %.2f apos %.2f\n", 
+			tm, vpos, apos);
 
-	static uint8_t dummy[2][8192];
-	if (!cnt) {
-		write_audio_frame(m, m->oc, m->audio_st, dummy[0]);
-		write_audio_frame(m, m->oc, m->audio_st, dummy[1]);
-	} else {
-		for (i = 0; i < cnt; i++) {
-			write_audio_frame(m, m->oc, m->audio_st, sample[i]);
+	if (vpos < tm + 3) {
+		if (vpos < tm - 3) 
+			m->vcnt = video_tm2cnt(tm);
+		write_video_frame(m, m->oc, m->video_st, yuv, linesize);
+		m->vcnt++;
+	}
+
+	if (apos < tm + 3) {
+		if (apos < tm - 3) 
+			m->acnt = audio_tm2cnt(tm);
+		static uint8_t dummy[2][8192];
+		/*
+		if (!cnt) {
+			cnt = 2;
+			sample[0] = dummy[0];
+			sample[1] = dummy[1];
+		}
+		*/
+		if (apos < vpos) {
+			for (i = 0; i < cnt; i++) {
+				write_audio_frame(m, m->oc, m->audio_st, sample[i]);
+				m->acnt++;
+			}
 		}
 	}
 }
@@ -332,7 +358,11 @@ static mp4enc_t *_enc_init(int w, int h, char *filename, char *opt)
 void *mp4enc_openrtmp(char *url, int w, int h)
 {
 	dbp(0, "openrtmp %s\n", url);
-	return _enc_init(w, h, url, "rtmp");
+	mp4enc_t *m = _enc_init(w, h, url, "rtmp");
+	if (m) {
+		m->tmstart = tm_elapsed();
+	}
+	return m;
 }
 
 void *mp4enc_openfile(char *filename, int w, int h)

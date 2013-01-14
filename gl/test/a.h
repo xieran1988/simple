@@ -37,4 +37,5 @@ void dump_file(char *filename, void *data, int len);
 void all_init(int w, int h);
 void all_render();
 void all_ctrl(char *fmt, ...);
+void all_getdelta(float *d);
 

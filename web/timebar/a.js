@@ -1,6 +1,5 @@
 
-
-$(document).ready(function() {
+(function() {
 
 	var dragops = {};
 
@@ -228,13 +227,16 @@ $(document).ready(function() {
 		});
 	};
 
-	$.fn.bar = function () {
+	$.fn.timebar = function () {
 		var args = Array.apply(null, arguments);
 		var bar = $(this);
 		var cursor = $('.cursor', bar);
 
 		if (args.length == 0) {
 			bar.css('width', 800);
+			bar.addClass('timebar');
+			bar.html('<canvas class=cursor width=8 height=70></canvas>');
+			cursor = $('.cursor', bar);
 			barops.draw_cursor(cursor);
 			barops.bind(bar, cursor);
 			return ;
@@ -265,26 +267,5 @@ $(document).ready(function() {
 		}
 	};
 
-	$.btnclick = function (s) {
-		if (s == 'glue') {
-			$('.bar').bar('glue');
-		}
-		if (s == 'cut') {
-			$('.bar').bar('cut');
-		}
-		if (s == 'del') {
-			$('.bar').bar('del');
-		}
-		if (s == 'new') {
-			$('.bar').bar('new');
-		}
-	}
-
-	$('.bar').bar();
-	$('.bar').bar('add', 0.1);
-	$('.bar').bar('add', 0.1);
-	$('.bar').bar('add', 0.2);
-	$('.bar').bar('cursor', 0.4);
-
-});
+})();
 

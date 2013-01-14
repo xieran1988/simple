@@ -17,6 +17,9 @@ test: test.o a.a
 objc_test: objc.o a.a
 	${CC} -o $@ $^ ${LIB}
 
+rtmp:
+	ffplay rtmp://localhost/myapp/1
+
 disp-y:
 	display -depth 8 -size 640x360 /tmp/Y.gray
 	

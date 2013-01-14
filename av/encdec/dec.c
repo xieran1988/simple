@@ -8,8 +8,6 @@
 
 #include "a.h"
 
-static int inited;
-
 typedef struct {
 	AVFormatContext *ifc;
 	AVStream *st_h264;
@@ -29,6 +27,7 @@ typedef struct {
 	float sampos[SAMPMAX];
 	int sampt, sampcnt;
 
+	int vcnt, acnt;
 } mp4dec_t;
 
 #define M(_m) ((mp4dec_t *)_m)
@@ -42,10 +41,10 @@ static int debug;
 
 static void _init() 
 {
-	if (inited++)
+	static int a;
+	if (a++)
 		return ;
 
-	debug = 0;
 	av_register_all();
 	av_log_set_level(AV_LOG_ERROR);
 }
@@ -61,13 +60,9 @@ static int _decode_audio_video_frame(mp4dec_t *m, int check, int exists);
 
 static void _dump_audio(char *fname, void *data, int len)
 {
-	static int opened;
 	static FILE *fp;
-
-	if (!opened) {
+	if (!fp) 
 		fp = fopen(fname, "wb+");
-		opened++;
-	}
 	fwrite(data, 1, len, fp);
 	fflush(fp);
 }
@@ -323,20 +318,13 @@ static void _fill_samples(mp4dec_t *m, float start, float end, void **sample, in
 
 int mp4dec_read_frame(void *_m, 
 		void **data, int *line,
-		void **sample, int *cnt
+		void **_sample, int *_cnt
 		)
 {
 	mp4dec_t *m = M(_m);
 	int i;
 		
 	dbp(0, "read frame\n");
-
-	if (sample) {
-		float start = mp4dec_pos(m);
-		float end = start + 1./25;
-		_fill_samples(m, start, end, sample, cnt);
-		dbp(0, "  samples [%.2f,%.2f] %d\n", start, end, *cnt);
-	}
 
 	i = _decode_audio_video_frame(m, 3, 1);
 	dbp(0, "  ret %d\n", i);
@@ -349,8 +337,25 @@ int mp4dec_read_frame(void *_m,
 			line[i] = m->frm_h264->linesize[i];
 		}
 	}
+	m->vcnt++;
+
+	void *sample[2];
+	int cnt;
+	float start = mp4dec_pos(m);
+	float end = start + 1./25;
+	_fill_samples(m, start, end, sample, &cnt);
+	dbp(0, "  samples [%.2f,%.2f] %d\n", start, end, cnt);
+
+
+	if (_sample) {
+		memcpy(_sample, sample, sizeof(sample));
+		*_cnt = cnt;
+	}
+	m->acnt += cnt;
+
+	dbp(0, "  apos %.2lf vpos %.2lf\n",
+		 m->vcnt/25., m->acnt*1024/44100.);
 
 	return 0;
 }
-
 

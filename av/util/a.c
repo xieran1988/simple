@@ -1,5 +1,6 @@
 
 #include <sys/time.h>
+#include <unistd.h>
 
 float tm_elapsed()
 {
@@ -14,4 +15,8 @@ float tm_elapsed()
 	return r;
 }
 
+void fsleep(float tm)
+{
+	usleep(tm*1e6);
+}
 

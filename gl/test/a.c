@@ -25,11 +25,13 @@ void all_init(int w, int h)
 	win_h = h;
 
 	glClearColor(0.0, 0.0, 0.0, 0.0);
-	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_TEXTURE_2D);
 	glShadeModel(GL_FLAT);
+	/*
 	glDepthRange(0, 1);
 	glDepthFunc(GL_LEQUAL);
+	glEnable(GL_DEPTH_TEST);
+	*/
 	
 	yuvtex = yuvtex_new(win_w, win_h);
 	fbotex = fbotex_new(FBO_W, FBO_H);
@@ -160,6 +162,7 @@ void all_render()
 	float mz[] = {0, 0, 0, 0};
 	float mw[] = {fw/2, fw/2, fw/2, fw/2};
 	float mh[] = {fh/2, fh/2, fh/2, fh/2};
+	int order[] = {0, 1, 2, 3};
 
 	if (ani.stat[0] == '4') {
 	//	printf("4: [%c]\n", ani.stat[1]);
@@ -167,6 +170,9 @@ void all_render()
 			mz[ani.idx] = 0.1;
 			mw[ani.idx] *= 1+ani.pos;
 			mh[ani.idx] *= 1+ani.pos;
+			i = order[ani.idx];
+			order[ani.idx] = 3;
+			order[3] = i;
 			if (ani.idx == 1) {
 				mx[1] *= 1-ani.pos;
 			}
@@ -179,8 +185,9 @@ void all_render()
 			}
 		}
 		for (i = 0; i < 4; i++) {
-			yuvtex_bind(yuvtex, mov[i].data, mov[i].line);
-			gl_draw_quads(mx[i], my[i], mz[i], mw[i], mh[i]);
+			int j = order[i];
+			yuvtex_bind(yuvtex, mov[j].data, mov[j].line);
+			gl_draw_quads(mx[j], my[j], mz[j], mw[j], mh[j]);
 			yuvtex_unbind();
 		}
 	}
@@ -203,7 +210,7 @@ void all_render()
 	if (!mon.nodisp) {
 		glLoadIdentity();
 		glBindTexture(GL_TEXTURE_2D, fbotex_tex(fbotex));
-		gl_draw_quads(win_w/8, win_h/8, 0, win_w/2, win_h/2);
+		gl_draw_quads(win_w/8, win_h/8, 0, win_w-win_w/4, win_h-win_h/4);
 	}
 
 	if (rec.stat == 'r') {
@@ -215,13 +222,24 @@ void all_render()
 	if (rec.stat == 't') {
 		void *data[3];
 		int line[3];
+		static uint8_t dummy[8192];
+		void *sample[2] = {dummy, dummy};
+		int cnt = 2;
+		float tm = tm_elapsed();
 		fbotex_getyuv(fbotex, data, line);
-		mp4enc_setpts(enc, tm_elapsed());
-		mp4enc_write_frame(enc, data, line, NULL, 0);
+		mp4enc_loglevel(1);
+		mp4enc_write_frame(enc, data, line, sample, cnt);
 	}
 //	dump("/tmp/Y.gray", data2[0], fh*line2[0]);
 //	yuv2jpg("/tmp/c.jpg", fw, fh, data2, line2);
+}
 
+void all_getdelta(float *d) 
+{
+	if (rec.stat == 't')
+		mp4enc_getdelta(enc, d, NULL);
+	else
+		*d = 0;
 }
 
 void all_ctrl(char *fmt, ...)

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+		<title> Webtest </title>
+
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/jquery-ui.css" rel="stylesheet">
+    <link href="a.css" rel="stylesheet">
+
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+    </style>
+
+		<script src=/js/jquery.js></script>
+		<script src=/js/jquery-ui.js></script>
+		<script src=/js/bootstrap.min.js></script>
+		<script src=a.js></script>
+
+		<script>
+
+		$.btnclick = function (s) {
+			if (s == 'glue') {
+				$('#bar').timebar('glue');
+			}
+			if (s == 'cut') {
+				$('#bar').timebar('cut');
+			}
+			if (s == 'del') {
+				$('#bar').timebar('del');
+			}
+			if (s == 'new') {
+				$('#bar').timebar('new');
+			}
+		};
+
+		$(document).ready(function () {
+			$('#bar').timebar();
+			$('#bar').timebar('add', 0.1);
+			$('#bar').timebar('add', 0.1);
+			$('#bar').timebar('add', 0.2);
+			$('#bar').timebar('cursor', 0.4);
+		});
+
+		</script>
+
+  </head>
+
+  <body>
+
+		<div class="container-fluid">
+
+		<div class="row-fluid">
+		<div class="span12">
+
+			<div class="row-fluid">
+			<div class="span6">
+				<div>
+					<button class=btn onclick="$.btnclick('glue');">Glue</button>
+					<button class=btn onclick="$.btnclick('cut');">Cut</button>
+					<button class=btn onclick="$.btnclick('del');">Del</button>
+					<button class=btn onclick="$.btnclick('new');">New</button>
+				</div>
+			</div>
+			</div>
+
+			<div class="row-fluid">
+			<div class="span6">
+				<div id=bar > </div>
+			</div>
+			</div>
+
+		</div>
+		</div>
+
+		</div>
+
+  </body>
+
+</html>
+

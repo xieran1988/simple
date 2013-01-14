@@ -153,10 +153,12 @@ void fbotex_getyuv(void *_m, void **data, int *line)
 		glReadBuffer(GL_COLOR_ATTACHMENT1);
 		glReadPixels(0, 0, m->w, ceil(m->h*0.375), GL_RGBA, GL_UNSIGNED_BYTE, m->data);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-	}
 
-//	glBindTexture(GL_TEXTURE_2D, m->tex[1]);
-//	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, m->data);
+		/*
+		glBindTexture(GL_TEXTURE_2D, m->tex[1]);
+		glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, m->data);
+		*/
+	}
 
 	line[0] = m->w;
 	line[1] = m->w/2;

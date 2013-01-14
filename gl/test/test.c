@@ -10,11 +10,12 @@ static void idle()
 {
 	GLuint tm = glutGet(GLUT_ELAPSED_TIME);
 	static GLuint lasttm, lasttm2, fps;
+	float d;
 
-	if (tm - lasttm > 1000./30) {
+	all_getdelta(&d);
+	if (d < 0.5) {
 		glutPostRedisplay();
 		fps++;
-		lasttm = tm;
 	}
 	if (tm - lasttm2 > 1000) {
 		printf("fps: %d tm: %.2f\n", fps, tm/1000.);
