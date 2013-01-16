@@ -1,14 +1,6 @@
-#include <stdio.h>
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libavresample/avresample.h>
-#include <libavutil/avutil.h>
-#include <libavutil/opt.h>
-#include <ctype.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 #include "a.h"
+#include "av.h"
 
 typedef struct {
 	AVFormatContext *ifc;

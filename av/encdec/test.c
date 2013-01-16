@@ -8,6 +8,15 @@
 
 #include <av/util/a.h>
 
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
+#include <libavutil/mathematics.h>
+#include <libavutil/dict.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 int main(int argc, char *argv[])
 {
 	void *data[3];
@@ -147,6 +156,10 @@ int main(int argc, char *argv[])
 			mp4enc_write_frame(enc, data, line, sample, cnt);
 		}
 		mp4enc_close(enc);
+	}
+
+	if (sel == 5) {
+
 	}
 
 	return 0;

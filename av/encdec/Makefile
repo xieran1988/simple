@@ -9,4 +9,6 @@ a.a: dec.o enc.o
 test: dec.o enc.o test.o
 	${CC} -o $@ $^ ${AVLIB} $T/av/util/a.a
 
+filter_test: filter.o
+	${CC} -o $@ $^ ${AVLIB} $T/av/util/a.a
 
