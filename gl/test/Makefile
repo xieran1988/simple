@@ -6,7 +6,7 @@ all: test objc_test a.a
 LIB := ${GLLIB} ${AVLIB} ${FTLIB} ${JPGLIB}
 LIB += $T/av/encdec/a.a 
 LIB += $T/av/util/a.a 
-LIB += $T/gl/util/util.o 
+LIB += $T/gl/util/a.o 
 
 a.a: shader.o yuvtex.o fontex.o rgbtex.o fbotex.o utils.o a.o
 	$A $@ $^ 

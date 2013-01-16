@@ -120,11 +120,31 @@ int main(int argc, char *argv[])
 				}
 				if (j == 10)
 					return 0;
-				mp4enc_write_frame(enc, data, line, sample, cnt);
+				mp4enc_write_frame_rtmp(enc, data, line, sample, cnt);
 				i++;
 			}
 			fsleep(0.5);
 
+		}
+		mp4enc_close(enc);
+	}
+
+	if (sel == 4) {
+		mp4dec_loglevel(1);
+
+		void *data[3];
+		int line[3];
+		sample_yuv(320, 240, data, line, 44);
+
+		void *dec = mp4dec_open("/vid/1.mp3");
+		void *enc = mp4enc_openfile("/tmp/out.mp4", 320, 240);
+
+		while (1) {
+			void *sample[2];
+			int cnt;
+			if (mp4dec_read_frame(dec, NULL, NULL, sample, &cnt))
+				break;
+			mp4enc_write_frame(enc, data, line, sample, cnt);
 		}
 		mp4enc_close(enc);
 	}

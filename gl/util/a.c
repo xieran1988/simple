@@ -2,14 +2,13 @@
 #include "a.h"
 #include <stdio.h>
 
-void gl_draw_quads_tex(float x, float y, float z, 
-		float w, float h, float texw, float texh)
+void gl_draw_quads_revtex(float x, float y, float z, float w, float h)
 {
 	glBegin(GL_QUADS);
-		glTexCoord2f(0, 0); glVertex3f(x, y+h, z);
-		glTexCoord2f(0, texh); glVertex3f(x, y, z);
-		glTexCoord2f(texw, texh); glVertex3f(x+w, y, z);
-		glTexCoord2f(texw, 0); glVertex3f(x+w, y+h, z);
+		glTexCoord2f(0, 1); glVertex3f(x, y+h, z);
+		glTexCoord2f(0, 0); glVertex3f(x, y, z);
+		glTexCoord2f(1, 0); glVertex3f(x+w, y, z);
+		glTexCoord2f(1, 1); glVertex3f(x+w, y+h, z);
 	glEnd();
 }
 

@@ -46,6 +46,6 @@ _all: all
 	${CC} -I$T -c -o $@ $<
 
 clean:
-	rm -rf *.o *.a *test *.so
+	rm -rf *.o *.a *test *.so ${OBJ}
 
 

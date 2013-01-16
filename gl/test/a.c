@@ -15,7 +15,7 @@
 #define FBO_H 360
 
 static GLuint rgbtex, pictex;
-void *yuvtex, *fbotex;
+void *yuvtex, *fbotex, *fontex;
 void *dec[4], *enc;
 int win_w, win_h;
 
@@ -42,6 +42,9 @@ void all_init(int w, int h)
 	dec[1] = mp4dec_open("/vid/2.mp4");
 	dec[2] = mp4dec_open("/vid/3.mp4");
 	dec[3] = mp4dec_open("/vid/4.mp4");
+
+	fontex_loglevel(1);
+	fontex = fontex_new(L"你好", 30);
 }
 
 static void dump(char *name, void *data, int len)
@@ -79,26 +82,18 @@ struct {
 	char noreadpix;
 } mon;
 
-void all_render()
+static void prepare_mp4()
 {
-	glViewport(0, 0, win_w, win_h);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluOrtho2D(-0.5, 0.5, -0.5, 0.5);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	glClearColor(1, 1, 1, 1);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
-
 	int i;
 	for (i = 0; i < 4; i++) {
 		if (mp4dec_read_frame(dec[i], mov[i].data, mov[i].line, NULL, NULL)) {
 			mp4dec_seek_precise(dec[i], 0);
 		}
 	}
+}
 
+static void prepare_ani()
+{
 	int fw = fbotex_w(fbotex);
 	int fh = fbotex_h(fbotex);
 
@@ -145,6 +140,13 @@ void all_render()
 			}
 		}
 	}
+}
+
+static void render_fbo()
+{
+	int fw = fbotex_w(fbotex);
+	int fh = fbotex_h(fbotex);
+	int i;
 
 	fbotex_render_start(fbotex);
 
@@ -198,7 +200,16 @@ void all_render()
 		yuvtex_unbind();
 	}
 
+	fontex_draw(fontex, 400, 300);
+
 	fbotex_render_end(fbotex);
+}
+
+void all_render()
+{
+	prepare_mp4();
+	prepare_ani();
+	render_fbo();
 
 	glViewport(0, 0, win_w, win_h);
 	glMatrixMode(GL_PROJECTION);
@@ -207,10 +218,14 @@ void all_render()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
+	glClearColor(1, 1, 1, 1);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
+
 	if (!mon.nodisp) {
 		glLoadIdentity();
 		glBindTexture(GL_TEXTURE_2D, fbotex_tex(fbotex));
-		gl_draw_quads(win_w/8, win_h/8, 0, win_w-win_w/4, win_h-win_h/4);
+		gl_draw_quads(0, 0, 0, win_w, win_h);
 	}
 
 	if (rec.stat == 'r') {

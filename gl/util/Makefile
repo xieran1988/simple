@@ -1,6 +1,6 @@
 
 include ../../top.mk
 
-all: util.o
+all: a.o
 
 

@@ -18,7 +18,10 @@ GLuint sample_rgb_tex(int w, int h);
 GLuint empty_rgb_tex(int w, int h);
 GLuint load_frag_shader(char *filename);
 
-GLuint fontex_new(wchar_t *s, int h);
+void *fontex_new(wchar_t *s, int h);
+GLuint fontex_tex(void *_m);
+void fontex_loglevel(int l);
+void fontex_draw(void *_m, float w, float h);
 
 void *fbotex_new(int w, int h);
 void fbotex_render_start(void *_m);
@@ -26,7 +29,6 @@ void fbotex_render_end(void *_m);
 int fbotex_w(void *_m);
 int fbotex_h(void *_m);
 GLuint fbotex_tex(void *_m);
-GLuint fbotex_tex2(void *_m);
 void fbotex_getyuv(void *_m, void **data, int *line);
 void fbotex_set(void *_m, char *fmt, ...);
 

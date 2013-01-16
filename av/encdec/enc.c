@@ -260,13 +260,35 @@ void mp4enc_getdelta(void *_m, float *vpos, float *apos)
 void mp4enc_write_frame(void *_m, void **yuv, int *linesize, void **sample, int cnt)
 {
 	mp4enc_t *m = M(_m);
+
+	float vpos = video_cnt2tm(m->vcnt);
+	float apos = audio_cnt2tm(m->acnt);
+
+	dbp(0, "write frame: vpos %.2f apos %.2f\n", vpos, apos);
+	//dbp(0, "  apos adjust to %.2f\n", apos);
+	
+	write_video_frame(m, m->oc, m->video_st, yuv, linesize);
+	m->vcnt++;
+
+	int i;
+	for (i = 0; i < cnt; i++) {
+		write_audio_frame(m, m->oc, m->audio_st, sample[i]);
+		m->acnt++;
+	}
+
+	// prefix:114.64.255.28 114.64.254.226
+}
+
+void mp4enc_write_frame_rtmp(void *_m, void **yuv, int *linesize, void **sample, int cnt)
+{
+	mp4enc_t *m = M(_m);
 	int i;
 
 	float tm = tm_elapsed() - m->tmstart;
 	float vpos = video_cnt2tm(m->vcnt);
 	float apos = audio_cnt2tm(m->acnt);
 
-	dbp(0, "write frame: tm %.2f vpos %.2f apos %.2f\n", 
+	dbp(0, "write frame rtmp: tm %.2f vpos %.2f apos %.2f\n", 
 			tm, vpos, apos);
 
 	if (vpos < tm + 3) {
@@ -279,8 +301,8 @@ void mp4enc_write_frame(void *_m, void **yuv, int *linesize, void **sample, int 
 	if (apos < tm + 3) {
 		if (apos < tm - 3) 
 			m->acnt = audio_tm2cnt(tm);
-		static uint8_t dummy[2][8192];
 		/*
+		static uint8_t dummy[2][8192];
 		if (!cnt) {
 			cnt = 2;
 			sample[0] = dummy[0];

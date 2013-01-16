@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavresample/avresample.h>
 #include <libavutil/avutil.h>
+#include <libavutil/opt.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -10,22 +12,26 @@
 
 typedef struct {
 	AVFormatContext *ifc;
-	AVStream *st_h264;
-	AVStream *st_aac;
+	AVStream *st_video;
+	AVStream *st_audio;
+
+	AVFrame *frm_video;
+	AVFrame *frm_audio;
+
 	float dur;
 	float pos;
-	float h264_time_base;
-	float aac_time_base;
-	AVFrame *frm_h264;
-	AVFrame *frm_aac;
 
-	// frame_size(1024)*sizeof(uint16_t)*nb_channels(2)
-	// 	43 frames per second
-#define SAMPMAX 100
+	float video_time_base;
+	float audio_time_base;
+
+#define SAMPMAX 120
 #define SAMPSIZE 8192
-	uint8_t samp[SAMPMAX][SAMPSIZE];
-	float sampos[SAMPMAX];
-	int sampt, sampcnt;
+	uint8_t samp[SAMPMAX+1][SAMPSIZE];
+	float sampos[SAMPMAX+1];
+	float samptpos, samphpos;
+	int samph, sampt, sampcnt;
+
+	AVAudioResampleContext *avr;
 
 	int vcnt, acnt;
 } mp4dec_t;
@@ -69,7 +75,7 @@ static void _dump_audio(char *fname, void *data, int len)
 
 static void _dump_yuv(mp4dec_t *m, char *prefix)
 {
-	int *linesize = m->frm_h264->linesize;
+	int *linesize = m->frm_video->linesize;
 	char path[256];
 	FILE *fp;
 	int i;
@@ -78,9 +84,82 @@ static void _dump_yuv(mp4dec_t *m, char *prefix)
 	for (i = 0; i < 3; i++) {
 		sprintf(path, "%s.%c", prefix, "YUV"[i]);
 		fp = fopen(path, "wb+");
-		fwrite(m->frm_h264->data[i], 1, linesize[i]*h, fp);
+		fwrite(m->frm_video->data[i], 1, linesize[i]*h, fp);
 		fclose(fp);
 	}
+}
+
+static int open_video(mp4dec_t *m)
+{
+	AVCodec *c;
+	int i;
+
+	c = avcodec_find_decoder(m->st_video->codec->codec_id);
+	i = avcodec_open2(m->st_video->codec, c, NULL);
+	if (i) {
+		dbp(0, "  open video decoder failed\n");
+		return 1;
+	}
+
+	m->video_time_base = m->st_video->time_base.num*1.0/m->st_video->time_base.den;
+	dbp(0, "  video.width: %d\n", m->st_video->codec->width);
+	dbp(0, "  video.height: %d\n", m->st_video->codec->height);
+	dbp(0, "  video.time_base: %d,%d %.3f\n", 
+			m->st_video->time_base.num,
+			m->st_video->time_base.den,
+			m->video_time_base);
+
+	m->frm_video = avcodec_alloc_frame();
+
+	return 0;
+}
+
+static int open_audio(mp4dec_t *m)
+{
+	AVCodec *c;
+	int i;
+
+	c = avcodec_find_decoder(m->st_audio->codec->codec_id);
+	i = avcodec_open2(m->st_audio->codec, c, NULL);
+	if (i) {
+		dbp(0, "  open audio decoder failed\n");
+		return 1;
+	}
+
+	m->audio_time_base = m->st_audio->time_base.num*1.0/m->st_audio->time_base.den;
+	dbp(0, "  audio.bit_rate: %d\n", m->st_audio->codec->bit_rate);
+	dbp(0, "  audio.sample_rate: %d\n", m->st_audio->codec->sample_rate);
+	dbp(0, "  audio.channels: %d\n", m->st_audio->codec->channels);
+	dbp(0, "  audio.frame_size: %d\n", m->st_audio->codec->frame_size);
+	dbp(0, "  audio.sample_fmt: %s\n", 
+						av_get_sample_fmt_name(m->st_audio->codec->sample_fmt));
+	dbp(0, "  audio.sample_fmt.size: %d\n", 
+						av_get_bytes_per_sample(m->st_audio->codec->sample_fmt));
+	dbp(0, "  audio.sample.size: %d\n", 
+		 				m->st_audio->codec->frame_size * 
+						av_get_bytes_per_sample(m->st_audio->codec->sample_fmt) *
+		 				m->st_audio->codec->channels 
+						);
+	dbp(0, "  audio.time_base: %d,%d\n", 
+			m->st_audio->time_base.num,
+			m->st_audio->time_base.den);
+
+	if (m->st_audio->codec->channels != 2) {
+		dbp(0, "  audio channels must be 2\n");
+		return 1;
+	}
+	if (m->st_audio->codec->sample_fmt != AV_SAMPLE_FMT_FLTP) {
+		dbp(0, "  audio sample format is not fltp\n");
+//		return 1;
+	}
+	if (m->st_audio->codec->sample_rate < 44100) {
+		dbp(0, "  audio sample rate cannot < 44100\n");
+//		return 1;
+	}
+
+	m->frm_audio = avcodec_alloc_frame();
+
+	return 0;
 }
 
 void *mp4dec_open(char *fname)
@@ -106,88 +185,43 @@ void *mp4dec_open(char *fname)
 	for (i = 0; i < m->ifc->nb_streams; i++) {
 		AVStream *st = m->ifc->streams[i];
 		c = avcodec_find_decoder(st->codec->codec_id);
-		if (!strcmp(c->name, "h264")) 
-			m->st_h264 = st;
-		if (!strcmp(c->name, "aac"))
-			m->st_aac = st;
+		if (!c)
+			continue;
+		if (st->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+			dbp(1, "  audio: %s\n", c->name);
+			m->st_audio = st;
+		}
+		if (st->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+			dbp(1, "  video: %s\n", c->name);
+			m->st_video = st;
+		}
 	}
 
-	//st_h264->codec->debug |= FF_DEBUG_PICT_INFO;
+	//st_video->codec->debug |= FF_DEBUG_PICT_INFO;
 
-	if (!m->st_h264) {
-		dbp(0, "  h264 stream not found\n");
-		return NULL;
-	}
-	if (!m->st_aac) {
-		dbp(0, "  aac stream not found\n");
+	if (!m->st_video && !m->st_audio) {
+		dbp(0, "  both video and audio stream not found\n");
 		return NULL;
 	}
 
 	m->dur = m->ifc->duration/1e6;
-	dbp(0, "  dur: %f\n", m->dur);
+	dbp(0, "  duration: %f s\n", m->dur);
 
-	c = avcodec_find_decoder(m->st_h264->codec->codec_id);
-	i = avcodec_open2(m->st_h264->codec, c, NULL);
-	if (i) {
-		dbp(0, "  open h264 decoder failed\n");
+	if (m->st_video && open_video(m))
 		return NULL;
-	}
 
-	m->h264_time_base = m->st_h264->time_base.num*1.0/m->st_h264->time_base.den;
-	dbp(0, "  width: %d\n", m->st_h264->codec->width);
-	dbp(0, "  height: %d\n", m->st_h264->codec->height);
-	dbp(0, "  h264.time_base: %d,%d %.3f\n", 
-			m->st_h264->time_base.num,
-			m->st_h264->time_base.den,
-			m->h264_time_base);
-
-	m->frm_h264 = avcodec_alloc_frame();
-
-	c = avcodec_find_decoder(m->st_aac->codec->codec_id);
-	i = avcodec_open2(m->st_aac->codec, c, NULL);
-	if (i) {
-		dbp(0, "  open aac decoder failed\n");
+	if (m->st_audio && open_audio(m))
 		return NULL;
-	}
 
-	m->aac_time_base = m->st_aac->time_base.num*1.0/m->st_aac->time_base.den;
-	dbp(0, "  aac.bit_rate: %d\n", m->st_aac->codec->bit_rate);
-	dbp(0, "  aac.sample_rate: %d\n", m->st_aac->codec->sample_rate);
-	dbp(0, "  aac.channels: %d\n", m->st_aac->codec->channels);
-	dbp(0, "  aac.frame_size: %d\n", m->st_aac->codec->frame_size);
-	dbp(0, "  aac.sample_fmt: %s\n", 
-						av_get_sample_fmt_name(m->st_aac->codec->sample_fmt));
-	dbp(0, "  aac.sample_fmt.size: %d\n", 
-						av_get_bytes_per_sample(m->st_aac->codec->sample_fmt));
-	dbp(0, "  aac.sample.size: %d\n", 
-		 				m->st_aac->codec->frame_size * 
-						av_get_bytes_per_sample(m->st_aac->codec->sample_fmt) *
-		 				m->st_aac->codec->channels 
-						);
-	dbp(0, "  aac.time_base: %d,%d\n", 
-			m->st_aac->time_base.num,
-			m->st_aac->time_base.den);
-
-	if (m->st_aac->codec->channels != 2) {
-		dbp(0, "  audio channels must be 2\n");
-		return NULL;
-	}
-	if (m->st_aac->codec->sample_fmt != AV_SAMPLE_FMT_FLTP) {
-		dbp(0, "  audio sample format is not fltp\n");
-		return NULL;
-	}
-	if (m->st_aac->codec->sample_rate < 44100) {
-		dbp(0, "  audio sample rate cannot < 44100\n");
-		return NULL;
-	}
-
-	m->frm_aac = avcodec_alloc_frame();
-
-	avformat_seek_file(m->ifc, m->st_h264->index, 0, 0, 0, 0);
+	m->samph = m->sampt = -1;
+	m->sampcnt = 0;
+	avformat_seek_file(m->ifc, 0, 0, 0, 0, 0);
 	int n = 300;
-	while (n-- && m->sampcnt < SAMPMAX) 
+	while (n-- && m->sampcnt < SAMPMAX 
+		//	&& m->sampos[m->samph%SAMPMAX] <= 0
+			) 
 		_decode_audio_video_frame(m, 2, 2);
-	avformat_seek_file(m->ifc, m->st_h264->index, 0, 0, 0, 0);
+	avformat_seek_file(m->ifc, 0, 0, 0, 0, 0);
 
 	return m;
 }
@@ -195,13 +229,13 @@ void *mp4dec_open(char *fname)
 int mp4dec_height(void *_m) 
 {
 	mp4dec_t *m = M(_m);
-	return m->st_h264->codec->height;
+	return m->st_video->codec->height;
 }
 
 int mp4dec_width(void *_m)
 {
 	mp4dec_t *m = M(_m);
-	return m->st_h264->codec->width;
+	return m->st_video->codec->width;
 }
 
 float mp4dec_dur(void *_m)
@@ -216,37 +250,93 @@ float mp4dec_pos(void *_m)
 	return m->pos;
 }
 
+static int _resample(mp4dec_t *m, void *_out)
+{
+	if (!m->avr) {
+		m->avr = avresample_alloc_context();
+		av_opt_set_int(m->avr, "in_channel_layout", 
+				m->frm_audio->channel_layout, 0);
+		av_opt_set_int(m->avr, "in_sample_fmt", 
+				m->frm_audio->format, 0);
+		av_opt_set_int(m->avr, "in_sample_rate", 
+				m->frm_audio->sample_rate, 0);
+		av_opt_set_int(m->avr, "out_channel_layout", 
+				AV_CH_LAYOUT_STEREO, 0);
+		av_opt_set_int(m->avr, "out_sample_fmt", 
+				AV_SAMPLE_FMT_FLTP, 0);
+		av_opt_set_int(m->avr, "out_sample_rate", 
+				m->frm_audio->sample_rate, 0);
+		if (avresample_open(m->avr)) {
+			dbp(0, "  open resample failed\n");
+			av_free(m->avr);
+			m->avr = NULL;
+			return 1;
+		}
+		dbp(0, "  open resample ok\n");
+	}
+
+	int r;
+	uint8_t *out[2] = {
+		(uint8_t *)_out, 
+		(uint8_t *)_out + 4096
+	};
+
+	r = avresample_convert(m->avr, 
+				out, 4096, 1024, 
+				m->frm_audio->data, 
+				m->frm_audio->linesize[0], 
+				m->frm_audio->nb_samples
+				);
+	dbp(0, "  resample %d\n", r);
+
+	return 0;
+}
+
 static int _decode_packet(mp4dec_t *m, AVPacket *pkt, int check, int exits)
 {
 	int i, got;
 
-	if (pkt->stream_index == m->st_h264->index && (check & 1)) {
-		i = avcodec_decode_video2(m->st_h264->codec, m->frm_h264, &got, pkt);
-		m->pos = pkt->dts * m->h264_time_base;
-		dbp(1, "  h264, decode %d, got=%d key=%d pos=%.3f pts=%lld dts=%lld\n", 
-				i, got, m->frm_h264->key_frame, m->pos, pkt->pts, pkt->dts);
+	if (m->st_video && 
+		  pkt->stream_index == m->st_video->index && 
+			(check & 1)) 
+	{
+		i = avcodec_decode_video2(m->st_video->codec, m->frm_video, &got, pkt);
+		m->pos = pkt->dts * m->video_time_base;
+		dbp(1, "  video: decode %d, got=%d key=%d pos=%.3f pts=%lld dts=%lld\n", 
+				i, got, m->frm_video->key_frame, m->pos, pkt->pts, pkt->dts);
 		if (!got)
 			return 1;
 		if (exits & 1)
 			return 0;
 	}
 
-	if (pkt->stream_index == m->st_aac->index && (check & 2)) {
-		i = avcodec_decode_audio4(m->st_aac->codec, m->frm_aac, &got, pkt);
-		float pos = pkt->dts * m->aac_time_base;
-		dbp(1, "  aac, decode %d, got=%d pos=%.3f [%d,%d]\n", 
-				i, got, pos, m->sampt, m->sampcnt
+	if (m->st_audio && 
+		  pkt->stream_index == m->st_audio->index && 
+			(check & 2)) 
+	{
+		i = avcodec_decode_audio4(m->st_audio->codec, m->frm_audio, &got, pkt);
+		float pos = pkt->dts * m->audio_time_base;
+		dbp(1, "  audio: decode %d, got=%d pos=%.3f "
+					 "[%d,%d] [%.2f,%.2f] %d\n", 
+				i, got, pos, 
+				m->samph, m->sampt, 
+				m->sampos[m->samph%SAMPMAX], 
+				m->sampos[m->sampt%SAMPMAX],
+				m->sampcnt
 				);
 		if (!got)
 			return 1;
-		if (!m->sampcnt || pos > m->sampos[m->sampt]) {
+		dbp(0, "  audio: size %d,%d\n", 
+				m->frm_audio->linesize[0],
+				m->frm_audio->linesize[1]
+				);
+		if (!m->sampcnt || pos > m->sampos[m->sampt%SAMPMAX]) {
 			m->sampt++;
-			m->sampt %= SAMPMAX;
-			m->sampos[m->sampt] = pos;
-			memcpy(m->samp[m->sampt], m->frm_aac->data[0], 4096);
-			memcpy(m->samp[m->sampt]+4096, m->frm_aac->data[1], 4096);
-			if (m->sampcnt < SAMPMAX) 
+			m->sampos[m->sampt%SAMPMAX] = pos;
+			_resample(m, m->samp[m->sampt%SAMPMAX]);
+			if (m->sampcnt < SAMPMAX)
 				m->sampcnt++;
+			m->samph = m->sampt-m->sampcnt+1;
 			//_dump_audio("/tmp/out.fltp", data, SAMPSIZE);
 		}
 		if (exits & 2) 
@@ -280,17 +370,17 @@ void mp4dec_seek_precise(void *_m, float pos)
 {
 	mp4dec_t *m = M(_m);
 	int n;
-	int64_t ts = (int64_t)(pos / m->h264_time_base);
+	int64_t ts = (int64_t)(pos / m->video_time_base);
 
 	dbp(0, "seek %f\n", pos);
 
-	avformat_seek_file(m->ifc, m->st_h264->index, 0, ts, ts, 0);
-	m->sampcnt = 0;
+	avformat_seek_file(m->ifc, m->st_video->index, 0, ts, ts, 0);
+	m->samph = m->sampt = m->sampcnt = 0;
 	n = 300;
-	while (n-- && (!m->sampcnt || m->sampos[m->sampt] < pos+1))
+	while (n-- && (!m->sampcnt || m->sampos[m->sampt % SAMPMAX] < pos+1))
 		_decode_audio_video_frame(m, 2, 2);
 
-	avformat_seek_file(m->ifc, m->st_h264->index, 0, ts, ts, 0);
+	avformat_seek_file(m->ifc, m->st_video->index, 0, ts, ts, 0);
 	n = 300;
 	while (n--) {
 		_decode_audio_video_frame(m, 3, 1);
@@ -302,14 +392,12 @@ void mp4dec_seek_precise(void *_m, float pos)
 static void _fill_samples(mp4dec_t *m, float start, float end, void **sample, int *cnt)
 {
 	int i, j;
-	int h = (m->sampt + SAMPMAX - m->sampcnt + 1) % SAMPMAX;
 
 	*cnt = 0;
-	for (i = h; i < h + m->sampcnt; i++) {
+	for (i = m->samph; i < m->sampt; i++) {
 		j = i % SAMPMAX;
 		if (m->sampos[j] > start && m->sampos[j] <= end) {
 			if (*cnt < 2) {
-				dbp(0, "  fill %p %d\n", m->samp[j], j);
 				sample[(*cnt)++] = m->samp[j];
 			}
 		}
@@ -322,40 +410,52 @@ int mp4dec_read_frame(void *_m,
 		)
 {
 	mp4dec_t *m = M(_m);
-	int i;
+	int i, r;
 		
 	dbp(0, "read frame\n");
 
-	i = _decode_audio_video_frame(m, 3, 1);
-	dbp(0, "  ret %d\n", i);
-	if (i) 
-		return i;
-	
-	if (data) {
+	if (m->st_video && data) {
+		i = _decode_audio_video_frame(m, 3, 1);
+		dbp(0, "  ret %d\n", i);
+		if (i) 
+			return i;
 		for (i = 0; i < 3; i++) {
-			data[i] = m->frm_h264->data[i];
-			line[i] = m->frm_h264->linesize[i];
+			data[i] = m->frm_video->data[i];
+			line[i] = m->frm_video->linesize[i];
 		}
+		m->vcnt++;
+		r = 0;
 	}
-	m->vcnt++;
+	
+	if (m->st_audio && !m->st_video && _sample) {
+		float start = m->pos;
+		float end = m->pos + 1./25;
+		m->pos += 1/25.;
+		while (!m->sampcnt || m->sampos[m->sampt%SAMPMAX] < end)
+			if (_decode_audio_video_frame(m, 2, 2))
+				return 1;
+		_fill_samples(m, start, end, _sample, _cnt);
+		dbp(0, "  samples [%.2f,%.2f] %d\n", start, end, *_cnt);
+		m->pos += 1/25.;
+		return 0;
+	}
 
-	void *sample[2];
-	int cnt;
-	float start = mp4dec_pos(m);
-	float end = start + 1./25;
-	_fill_samples(m, start, end, sample, &cnt);
-	dbp(0, "  samples [%.2f,%.2f] %d\n", start, end, cnt);
-
-
-	if (_sample) {
+	if (m->st_audio && m->st_video && _sample) {
+		void *sample[2];
+		int cnt;
+		float start = mp4dec_pos(m);
+		float end = start + 1/25.;
+		_fill_samples(m, start, end, sample, &cnt);
+		dbp(0, "  samples [%.2f,%.2f] %d\n", start, end, cnt);
 		memcpy(_sample, sample, sizeof(sample));
 		*_cnt = cnt;
+		m->acnt += cnt;
+		return 0;
 	}
-	m->acnt += cnt;
 
 	dbp(0, "  apos %.2lf vpos %.2lf\n",
 		 m->vcnt/25., m->acnt*1024/44100.);
 
-	return 0;
+	return 1;
 }
 
