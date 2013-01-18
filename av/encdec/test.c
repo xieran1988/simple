@@ -1,21 +1,8 @@
 
 #include "a.h"
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-#include <unistd.h>
+#include "av.h"
 
 #include <av/util/a.h>
-
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libavutil/avutil.h>
-#include <libavutil/mathematics.h>
-#include <libavutil/dict.h>
-#include <ctype.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 int main(int argc, char *argv[])
 {
@@ -35,6 +22,7 @@ int main(int argc, char *argv[])
 		void *enc;
 
 		mp4dec_loglevel(1);
+		mp4enc_loglevel(1);
 
 		dec = mp4dec_open("/vid/1.mp4");
 		if (!dec)
@@ -140,26 +128,43 @@ int main(int argc, char *argv[])
 
 	if (sel == 4) {
 		mp4dec_loglevel(1);
+		mp4enc_loglevel(1);
 
 		void *data[3];
 		int line[3];
-		sample_yuv(320, 240, data, line, 44);
+		sample_yuv(320, 240, data, line, 0);
 
-		void *dec = mp4dec_open("/vid/1.mp3");
+		void *dec = mp4dec_open("/tmp/1.aac");
 		void *enc = mp4enc_openfile("/tmp/out.mp4", 320, 240);
+
+		if (!dec || !enc)
+			return 0;
+
+		mp4dec_seek_precise(dec, 32);
 
 		while (1) {
 			void *sample[2];
 			int cnt;
 			if (mp4dec_read_frame(dec, NULL, NULL, sample, &cnt))
 				break;
+			int i, j, k, y;
+			float *f = (float *)sample[0];
+
+			memset(data[0], 0, 320*240);
+			for (i = 0; i < 320; i++) {
+				j = i*4096/320;
+				y = (f[j]+1)*120;
+				for (k = y; k < 240; k++)
+					*((uint8_t *)data[0] + k*320 + i) = 33;
+			}
+
 			mp4enc_write_frame(enc, data, line, sample, cnt);
 		}
 		mp4enc_close(enc);
 	}
 
 	if (sel == 5) {
-
+		void *dec = mp4dec_open("/vid/1.aac");
 	}
 
 	return 0;

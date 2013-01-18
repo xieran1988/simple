@@ -100,8 +100,17 @@ static AVStream *add_video_stream(mp4enc_t *m, AVFormatContext *oc, enum CodecID
 	c->bit_rate = 400000;
 	c->width = w;
 	c->height = h;
-	c->time_base.den = 1000;
-	c->time_base.num = 1;
+
+	dbp(0, "  opt %s\n", m->opt);
+	if (strstr(m->opt, "rtmp")) {
+		c->time_base.den = 1000;
+		c->time_base.num = 1;
+	} else {
+		c->time_base.den = 25;
+		c->time_base.num = 1;
+		dbp(0, "  non-rtmp set timebase 25/1\n");
+	}
+
 	c->gop_size = 12; 
 	c->pix_fmt = PIX_FMT_YUV420P;
 
@@ -204,8 +213,13 @@ static void write_audio_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, ui
 	m->audio_frm->extended_data = m->audio_frm->data;
 	m->audio_frm->data[0] = samples;
 	m->audio_frm->data[1] = samples + 4096;
-	m->audio_frm->linesize[0] = 8192;
-	m->audio_frm->pts = audio_cnt2tm(m->acnt)*1000;
+	m->audio_frm->linesize[0] = 4096;
+
+	if (strstr(m->opt, "rtmp")) {
+		m->audio_frm->pts = audio_cnt2tm(m->acnt)*1000;
+	} else {
+		m->audio_frm->pts = m->acnt*1024;
+	}
 
 	r = avcodec_encode_audio2(c, &pkt, m->audio_frm, &got);
 	dbp(0, "  audio: encode %d got=%d size=%d pts=%lld\n", 
@@ -227,7 +241,11 @@ static int write_video_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, voi
 		m->video_frm->linesize[i] = linesize[i];
 	}
 
-	m->video_frm->pts = video_cnt2tm(m->vcnt)*1000;
+	if (strstr(m->opt, "rtmp")) {
+		m->video_frm->pts = video_cnt2tm(m->vcnt)*1000;
+	} else {
+		m->video_frm->pts = m->vcnt;
+	}
 
 	av_init_packet(&pkt);
 

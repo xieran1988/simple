@@ -10,6 +10,7 @@ int main()
 
 	avfilter_register_all();
 	av_register_all();
+	av_log_set_level(AV_LOG_DEBUG);
 
 	i = avfilter_graph_parse2(graph, "anull", &inputs, &outputs);
 	printf("parse2 %d\n", i);
@@ -44,17 +45,39 @@ int main()
 	i = avfilter_link(format, 0, fc_out, 0);
 	printf("link3 %d\n", i);
 
-	AVFrame *frm_in = avcodec_alloc_frame();
-	i = av_buffersrc_write_frame(fc_in, frm_in);
-	printf("writefrm %d\n", i);
+	i = avfilter_graph_config(graph, NULL);
+	printf("config %d\n", i);
 
-	AVFrame *frm_out = avcodec_alloc_frame();
-	avcodec_get_frame_defaults(frm_out); // repeat
+	int n = 100;
 
-	AVFilterBufferRef *picref;
-	av_buffersink_read_samples(fc_out, &picref, 1024);
-	avfilter_copy_buf_props(frm_out, picref);
-//	frm->pts = av_rescale_q(picref->pts, intpus->time_base, codec->time_base);
+	while (n--) {
+
+		AVFrame *frm_in = avcodec_alloc_frame();
+		static uint8_t buf[2][1152];
+
+		avcodec_get_frame_defaults(frm_in);
+		frm_in->format = AV_SAMPLE_FMT_S16P;
+		frm_in->nb_samples = 576;
+		frm_in->linesize[0] = 1152;
+		frm_in->data[0] = buf[0];
+		frm_in->data[1] = buf[1];
+		frm_in->sample_rate = 22050;
+		frm_in->channel_layout = AV_CH_LAYOUT_STEREO;
+
+		i = av_buffersrc_write_frame(fc_in, frm_in);
+		printf("writefrm %d\n", i);
+
+		AVFrame *frm_out = avcodec_alloc_frame();
+		avcodec_get_frame_defaults(frm_out); // repeat
+
+		AVFilterBufferRef *picref;
+		i = av_buffersink_read_samples(fc_out, &picref, 1024);
+		printf("readfrm %d\n", i);
+
+		avfilter_copy_buf_props(frm_out, picref);
+	//	printf("outfrm %d\n", frm_out->linesize[0]);
+		//	frm->pts = av_rescale_q(picref->pts, intpus->time_base, codec->time_base);
+	}
 
 	return 0;
 }

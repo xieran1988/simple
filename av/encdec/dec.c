@@ -18,12 +18,10 @@ typedef struct {
 
 #define SAMPMAX 120
 #define SAMPSIZE 8192
-	uint8_t samp[SAMPMAX+1][SAMPSIZE];
-	float sampos[SAMPMAX+1];
+	uint8_t samp[SAMPMAX][SAMPSIZE];
+	float sampos[SAMPMAX];
 	float samptpos, samphpos;
 	int samph, sampt, sampcnt;
-
-	AVAudioResampleContext *avr;
 
 	int vcnt, acnt;
 } mp4dec_t;
@@ -142,16 +140,31 @@ static int open_audio(mp4dec_t *m)
 	}
 	if (m->st_audio->codec->sample_fmt != AV_SAMPLE_FMT_FLTP) {
 		dbp(0, "  audio sample format is not fltp\n");
-//		return 1;
+		return 1;
 	}
 	if (m->st_audio->codec->sample_rate < 44100) {
 		dbp(0, "  audio sample rate cannot < 44100\n");
-//		return 1;
+		return 1;
 	}
 
 	m->frm_audio = avcodec_alloc_frame();
 
 	return 0;
+}
+
+static void _prefetch_audio(mp4dec_t *m, float pos)
+{
+	dbp(0, "  prefetch audio to %.2f\n", pos);
+	m->sampcnt = 0;
+	m->samph = m->sampt = -1;
+	int n = 300;
+	while (n-- && m->sampcnt < SAMPMAX) {
+		if (_decode_audio_video_frame(m, 2, 2))
+			break;
+		if (m->sampt >= 0 && m->sampos[m->sampt%SAMPMAX] >= pos)
+			break;
+	}
+	dbp(0, "  prefetch done\n");
 }
 
 void *mp4dec_open(char *fname)
@@ -205,14 +218,8 @@ void *mp4dec_open(char *fname)
 	if (m->st_audio && open_audio(m))
 		return NULL;
 
-	m->samph = m->sampt = -1;
-	m->sampcnt = 0;
 	avformat_seek_file(m->ifc, 0, 0, 0, 0, 0);
-	int n = 300;
-	while (n-- && m->sampcnt < SAMPMAX 
-		//	&& m->sampos[m->samph%SAMPMAX] <= 0
-			) 
-		_decode_audio_video_frame(m, 2, 2);
+	_prefetch_audio(m, 1);
 	avformat_seek_file(m->ifc, 0, 0, 0, 0, 0);
 
 	return m;
@@ -242,48 +249,6 @@ float mp4dec_pos(void *_m)
 	return m->pos;
 }
 
-static int _resample(mp4dec_t *m, void *_out)
-{
-	if (!m->avr) {
-		m->avr = avresample_alloc_context();
-		av_opt_set_int(m->avr, "in_channel_layout", 
-				m->frm_audio->channel_layout, 0);
-		av_opt_set_int(m->avr, "in_sample_fmt", 
-				m->frm_audio->format, 0);
-		av_opt_set_int(m->avr, "in_sample_rate", 
-				m->frm_audio->sample_rate, 0);
-		av_opt_set_int(m->avr, "out_channel_layout", 
-				AV_CH_LAYOUT_STEREO, 0);
-		av_opt_set_int(m->avr, "out_sample_fmt", 
-				AV_SAMPLE_FMT_FLTP, 0);
-		av_opt_set_int(m->avr, "out_sample_rate", 
-				m->frm_audio->sample_rate, 0);
-		if (avresample_open(m->avr)) {
-			dbp(0, "  open resample failed\n");
-			av_free(m->avr);
-			m->avr = NULL;
-			return 1;
-		}
-		dbp(0, "  open resample ok\n");
-	}
-
-	int r;
-	uint8_t *out[2] = {
-		(uint8_t *)_out, 
-		(uint8_t *)_out + 4096
-	};
-
-	r = avresample_convert(m->avr, 
-				out, 4096, 1024, 
-				m->frm_audio->data, 
-				m->frm_audio->linesize[0], 
-				m->frm_audio->nb_samples
-				);
-	dbp(0, "  resample %d\n", r);
-
-	return 0;
-}
-
 static int _decode_packet(mp4dec_t *m, AVPacket *pkt, int check, int exits)
 {
 	int i, got;
@@ -308,9 +273,9 @@ static int _decode_packet(mp4dec_t *m, AVPacket *pkt, int check, int exits)
 	{
 		i = avcodec_decode_audio4(m->st_audio->codec, m->frm_audio, &got, pkt);
 		float pos = pkt->dts * m->audio_time_base;
-		dbp(1, "  audio: decode %d, got=%d pos=%.3f "
+		dbp(1, "  audio: decode %d got=%d pos=%.3f pts=%lld "
 					 "[%d,%d] [%.2f,%.2f] %d\n", 
-				i, got, pos, 
+				i, got, pos, pkt->pts,
 				m->samph, m->sampt, 
 				m->sampos[m->samph%SAMPMAX], 
 				m->sampos[m->sampt%SAMPMAX],
@@ -320,12 +285,14 @@ static int _decode_packet(mp4dec_t *m, AVPacket *pkt, int check, int exits)
 			return 1;
 		dbp(0, "  audio: size %d,%d\n", 
 				m->frm_audio->linesize[0],
-				m->frm_audio->linesize[1]
+				m->frm_audio->nb_samples
 				);
 		if (!m->sampcnt || pos > m->sampos[m->sampt%SAMPMAX]) {
 			m->sampt++;
 			m->sampos[m->sampt%SAMPMAX] = pos;
-			_resample(m, m->samp[m->sampt%SAMPMAX]);
+			uint8_t *p = (uint8_t *)m->samp[m->sampt%SAMPMAX];
+			memcpy(p, m->frm_audio->data[0], 4096);
+			memcpy(p + 4096, m->frm_audio->data[1], 4096);
 			if (m->sampcnt < SAMPMAX)
 				m->sampcnt++;
 			m->samph = m->sampt-m->sampcnt+1;
@@ -362,28 +329,37 @@ void mp4dec_seek_precise(void *_m, float pos)
 {
 	mp4dec_t *m = M(_m);
 	int n;
-	int64_t ts = (int64_t)(pos / m->video_time_base);
+	int64_t ts;
+	int index;
 
 	dbp(0, "seek %f\n", pos);
 
-	avformat_seek_file(m->ifc, m->st_video->index, 0, ts, ts, 0);
-	m->samph = m->sampt = m->sampcnt = 0;
-	n = 300;
-	while (n-- && (!m->sampcnt || m->sampos[m->sampt % SAMPMAX] < pos+1))
-		_decode_audio_video_frame(m, 2, 2);
+	if (m->st_video) {
+		ts = (int64_t)(pos / m->video_time_base);
+		index = m->st_video->index;
 
-	avformat_seek_file(m->ifc, m->st_video->index, 0, ts, ts, 0);
-	n = 300;
-	while (n--) {
-		_decode_audio_video_frame(m, 3, 1);
-		if (m->pos >= pos - 1./25) 
-			return ;
+		avformat_seek_file(m->ifc, index, 0, ts, ts, 0);
+		_prefetch_audio(m, pos+1);
+		avformat_seek_file(m->ifc, index, 0, ts, ts, 0);
+
+		n = 300;
+		while (n--) {
+			_decode_audio_video_frame(m, 3, 1);
+			if (m->pos >= pos - 1./25) 
+				return ;
+		}
+	} else {
+		ts = (int64_t)(pos / m->audio_time_base);
+		index = m->st_audio->index;
+		avformat_seek_file(m->ifc, index, 0, ts, ts, 0);
+		m->pos = pos;
 	}
 }
 
-static void _fill_samples(mp4dec_t *m, float start, float end, void **sample, int *cnt)
+static float _fill_samples(mp4dec_t *m, float start, float end, void **sample, int *cnt)
 {
 	int i, j;
+	float ret = start;
 
 	*cnt = 0;
 	for (i = m->samph; i < m->sampt; i++) {
@@ -391,9 +367,11 @@ static void _fill_samples(mp4dec_t *m, float start, float end, void **sample, in
 		if (m->sampos[j] > start && m->sampos[j] <= end) {
 			if (*cnt < 2) {
 				sample[(*cnt)++] = m->samp[j];
+				ret = m->sampos[j];
 			}
 		}
 	}
+	return ret;
 }
 
 int mp4dec_read_frame(void *_m, 
@@ -422,13 +400,12 @@ int mp4dec_read_frame(void *_m,
 	if (m->st_audio && !m->st_video && _sample) {
 		float start = m->pos;
 		float end = m->pos + 1./25;
-		m->pos += 1/25.;
 		while (!m->sampcnt || m->sampos[m->sampt%SAMPMAX] < end)
 			if (_decode_audio_video_frame(m, 2, 2))
 				return 1;
 		_fill_samples(m, start, end, _sample, _cnt);
+		m->pos = end;
 		dbp(0, "  samples [%.2f,%.2f] %d\n", start, end, *_cnt);
-		m->pos += 1/25.;
 		return 0;
 	}
 
