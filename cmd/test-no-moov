@@ -1,0 +1,4 @@
+#!/bin/bash
+
+avconv -i /vid/1.mp4 -vcodec copy -acodec copy -f mov -movflags empty_moov /www/nomoov.mp4
+

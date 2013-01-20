@@ -22,6 +22,10 @@ typedef struct {
 	char *opt;
 	float tmstart;
 	int vcnt, acnt;
+
+	float dur;
+	int hlscnt;
+	char *hlspref;
 } mp4enc_t;
 
 #define M(_m) ((mp4enc_t *)_m)
@@ -97,7 +101,7 @@ static AVStream *add_video_stream(mp4enc_t *m, AVFormatContext *oc, enum CodecID
 	c->codec_id = codec_id;
 	c->codec_type = AVMEDIA_TYPE_VIDEO;
 
-	c->bit_rate = 400000;
+	c->bit_rate = 100000;
 	c->width = w;
 	c->height = h;
 
@@ -184,10 +188,11 @@ static int open_video(AVFormatContext *oc, AVStream *st)
 		return 1;
 	}
 
-//	av_dict_set(&opt, "preset", "ultrafast", 0);
-	av_dict_set(&opt, "profile", "high", 0);
+	av_dict_set(&opt, "preset", "ultrafast", 0);
+//	av_dict_set(&opt, "profile", "high", 0);
 //	av_dict_set(&opt, "preset", "medium", 0);
 //	av_dict_set(&opt, "tune", "zerolatency", 0);
+	av_dict_set(&opt, "tune", "zerolatency", 0);
 	if (avcodec_open2(c, NULL, &opt) < 0) {
 		dbp(0, "  could not open video codec\n");
 		return 1;
@@ -217,18 +222,33 @@ static void write_audio_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, ui
 
 	if (strstr(m->opt, "rtmp")) {
 		m->audio_frm->pts = audio_cnt2tm(m->acnt)*1000;
+	} else if (strstr(m->opt, "hls")) {
+		m->audio_frm->pts = audio_cnt2tm(m->acnt)*100000;
 	} else {
 		m->audio_frm->pts = m->acnt*1024;
 	}
 
 	r = avcodec_encode_audio2(c, &pkt, m->audio_frm, &got);
-	dbp(0, "  audio: encode %d got=%d size=%d pts=%lld\n", 
-			r, got, pkt.size, pkt.pts);
+	dbp(0, "  audio: encode %d got=%d size=%d dts=%lld pts=%lld->%lld key=%d\n", 
+			r, got, pkt.size, pkt.dts, m->audio_frm->pts, pkt.pts, pkt.flags & AV_PKT_FLAG_KEY);
+
+	if (pkt.size <= 0) {
+		av_free_packet(&pkt);
+		return ;
+	}
+
+	if (strstr(m->opt, "hls")) {
+		pkt.pts = pkt.dts = audio_cnt2tm(m->acnt)*100000;
+	}
+
+	if (pkt.pts < 0) 
+		pkt.dts = pkt.pts = 0;
 
 	pkt.stream_index = st->index;
 
 	r = av_interleaved_write_frame(oc, &pkt);
-//	dbp(0, "  audio: frame %d size=%d\n", r, pkt.size);
+
+	av_free_packet(&pkt);
 }
 
 static int write_video_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, void **yuv, int *linesize)
@@ -243,6 +263,8 @@ static int write_video_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, voi
 
 	if (strstr(m->opt, "rtmp")) {
 		m->video_frm->pts = video_cnt2tm(m->vcnt)*1000;
+	} else if (strstr(m->opt, "hls")) {
+		m->video_frm->pts = video_cnt2tm(m->vcnt)*100000;
 	} else {
 		m->video_frm->pts = m->vcnt;
 	}
@@ -250,17 +272,35 @@ static int write_video_frame(mp4enc_t *m, AVFormatContext *oc, AVStream *st, voi
 	av_init_packet(&pkt);
 
 	avcodec_encode_video2(m->video_st->codec, &pkt, m->video_frm, &got);
-	dbp(0, "  video: encode size=%d got=%d dts=%lld pts=%lld\n", 
-			pkt.size, got, pkt.dts, pkt.pts);
+	dbp(0, "  video: encode size=%d got=%d dts=%lld pts=%lld key=%d\n", 
+			pkt.size, got, pkt.dts, pkt.pts, pkt.flags & AV_PKT_FLAG_KEY);
 
-	if (pkt.size > 0) {
-		pkt.stream_index = st->index;
-		r = av_interleaved_write_frame(oc, &pkt);
-//		dbp(0, "  video: write=%d\n", r);
+	if (pkt.size <= 0) {
 		av_free_packet(&pkt);
+		return 1;
 	}
 
-	return 1;
+	if (strstr(m->opt, "hls") && 
+			video_cnt2tm(m->vcnt) > (m->hlscnt+1) && 
+			(pkt.flags & AV_PKT_FLAG_KEY)) 
+	{
+		m->hlscnt++;
+
+		av_write_trailer(m->oc);
+		avio_close(m->oc->pb);
+
+		char path[256];
+		sprintf(path, "%s/h%d.ts", m->hlspref, m->hlscnt);
+		r = avio_open(&m->oc->pb, path, AVIO_FLAG_WRITE);
+		dbp(0, "  avio_open %s tm %.2f\n", path, video_cnt2tm(m->vcnt));
+		avformat_write_header(m->oc, NULL);
+	}
+
+	pkt.stream_index = st->index;
+	r = av_interleaved_write_frame(oc, &pkt);
+
+	av_free_packet(&pkt);
+	return 0;
 }
 
 void mp4enc_getdelta(void *_m, float *vpos, float *apos)
@@ -336,7 +376,14 @@ void mp4enc_write_frame_rtmp(void *_m, void **yuv, int *linesize, void **sample,
 	}
 }
 
-static mp4enc_t *_enc_init(int w, int h, char *filename, char *opt)
+static mp4enc_t *_enc_alloc()
+{
+	mp4enc_t *m = (mp4enc_t *)malloc(sizeof(*m));
+	memset(m, 0, sizeof(*m));
+	return m;
+}
+
+static mp4enc_t *_enc_init(int w, int h, char *filename, char *opt, float dur)
 {
 	mp4enc_t *m;
 	AVOutputFormat *fmt;
@@ -346,14 +393,20 @@ static mp4enc_t *_enc_init(int w, int h, char *filename, char *opt)
 
 	_init();
 
-	m = (mp4enc_t *)malloc(sizeof(mp4enc_t));
-	memset(m, 0, sizeof(mp4enc_t));
-	
+	m = _enc_alloc();
 	m->opt = opt;
+
+	char *ext = "mp4";
+	if (strstr(opt, "rtmp"))
+		ext = "flv";
+	if (strstr(opt, "ts"))
+		ext = "mpegts";
+	if (strstr(opt, "hls"))
+		ext = "mpegts";
+
+	dbp(0, "  fmtext: %s\n", ext);
 	
-	fmt = av_guess_format(
-			strncmp(filename, "rtmp", 4) ? "mp4" : "flv", 
-			NULL, NULL);
+	fmt = av_guess_format(ext, NULL, NULL);
 	dbp(0, "  guessed fmt: %p\n", fmt);
 	if (!fmt) {
 		dbp(0, "  cannot get fmt\n");
@@ -388,9 +441,38 @@ static mp4enc_t *_enc_init(int w, int h, char *filename, char *opt)
 	m->audio_frm = avcodec_alloc_frame();
 	m->video_frm = avcodec_alloc_frame();
 
-	r = avio_open(&m->oc->pb, filename, AVIO_FLAG_WRITE);
-	dbp(0, "avio_open %d\n", r);
-	avformat_write_header(m->oc, NULL);
+	if (strstr(opt, "hls")) {
+
+		m->hlspref = filename;
+
+		char path[256];
+		sprintf(path, "%s/h0.ts", m->hlspref);
+		r = avio_open(&m->oc->pb, path, AVIO_FLAG_WRITE);
+		dbp(0, "  avio_open %s\n", path);
+		avformat_write_header(m->oc, NULL);
+
+		sprintf(path, "%s/h.m3u8", m->hlspref);
+		FILE *fp = fopen(path, "w+");
+		fprintf(fp, "#EXTM3U\n");
+		fprintf(fp, "#EXT-X-TARGETDURATION:1\n");
+		fprintf(fp, "#EXT-X-MEDIA-SEQUENCE:1\n");
+		int i;
+		for (i = 0; i < ceil(dur); i++) {
+			fprintf(fp, "#EXTINF:1,\n");
+			fprintf(fp, "h%d.ts\n", i);
+		}
+			fprintf(fp, "#EXT-X-ENDLIST\n");
+		fclose(fp);
+
+	} else {
+		r = avio_open(&m->oc->pb, filename, AVIO_FLAG_WRITE);
+		dbp(0, "avio_open %d\n", r);
+		avformat_write_header(m->oc, NULL);
+	}
+
+	if (strstr(opt, "rtmp")) {
+		m->tmstart = tm_elapsed();
+	}
 
 	return m;
 }
@@ -398,9 +480,8 @@ static mp4enc_t *_enc_init(int w, int h, char *filename, char *opt)
 void *mp4enc_openrtmp(char *url, int w, int h)
 {
 	dbp(0, "openrtmp %s\n", url);
-	mp4enc_t *m = _enc_init(w, h, url, "rtmp");
+	mp4enc_t *m = _enc_init(w, h, url, "rtmp", 0);
 	if (m) {
-		m->tmstart = tm_elapsed();
 	}
 	return m;
 }
@@ -408,7 +489,19 @@ void *mp4enc_openrtmp(char *url, int w, int h)
 void *mp4enc_openfile(char *filename, int w, int h)
 {
 	dbp(0, "openfile %s\n", filename);
-	return _enc_init(w, h, filename, "");
+	return _enc_init(w, h, filename, "", 0);
+}
+
+void *mp4enc_opents(int w, int h)
+{
+	dbp(0, "opents\n");
+	return _enc_init(w, h, "/tmp/a.ts", "ts", 0);
+}
+
+void *mp4enc_openhls(char *dir, int w, int h, float dur)
+{
+	dbp(0, "openhls\n");
+	return _enc_init(w, h, dir, "hls", dur);
 }
 
 void mp4enc_close(void *_m)

@@ -130,8 +130,6 @@ int main(int argc, char *argv[])
 		mp4dec_loglevel(1);
 		mp4enc_loglevel(1);
 
-		void *data[3];
-		int line[3];
 		sample_yuv(320, 240, data, line, 0);
 
 		void *dec = mp4dec_open("/tmp/1.aac");
@@ -143,8 +141,6 @@ int main(int argc, char *argv[])
 		mp4dec_seek_precise(dec, 32);
 
 		while (1) {
-			void *sample[2];
-			int cnt;
 			if (mp4dec_read_frame(dec, NULL, NULL, sample, &cnt))
 				break;
 			int i, j, k, y;
@@ -164,7 +160,56 @@ int main(int argc, char *argv[])
 	}
 
 	if (sel == 5) {
-		void *dec = mp4dec_open("/vid/1.aac");
+		mp4dec_loglevel(1);
+		mp4enc_loglevel(1);
+
+		void *dec = mp4dec_open("/vid/1.mp4");
+		void *enc = mp4enc_opents(640, 360);
+
+		if (!dec || !enc)
+			return 0;
+
+		while (1) {
+			if (mp4dec_read_frame(dec, data, line, sample, &cnt))
+				break;
+			mp4enc_write_frame(enc, data, line, sample, cnt);
+		}
+	}
+
+	if (sel == 6) {
+
+		mp4dec_loglevel(1);
+		mp4enc_loglevel(1);
+
+		void *dec2 = mp4dec_open("/vid/1.aac");
+		void *dec = mp4dec_open("/vid/1.mp4");
+		void *enc = mp4enc_openhls("/www/hls", 640, 360, 40.0);
+
+		if (!dec || !enc)
+			return 0;
+
+		while (1) {
+			if (mp4dec_read_frame(dec, data, line, NULL, 0))
+				break;
+			mp4dec_read_frame(dec2, NULL, NULL, sample, &cnt);
+			mp4enc_write_frame(enc, data, line, sample, cnt);
+		}
+	}
+
+	if (sel == 7) {
+		mp4dec_loglevel(1);
+
+		void *dec = mp4dec_open("/vid/1.mp4");
+		mp4dec_set(dec, "novideo");
+		while (1) {
+			if (mp4dec_read_frame(dec, NULL, NULL, sample, &cnt))
+				break;
+		}
+	}
+
+	if (sel == 8) {
+		mp4dec_loglevel(1);
+		void *dec = mp4dec_open("/www/video/a.mp4");
 	}
 
 	return 0;

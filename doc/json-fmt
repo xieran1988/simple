@@ -1,0 +1,15 @@
+GET /fetch?url=xx
+{ret:3}
+
+GET /fetch?query=3
+{stat:'parse'}
+{stat:'fetch', cur:333.3, per:33, size:23.23}
+{stat:'done'}
+{stat:'error', err:'(parse|fetch)'}
+
+GET /fetch?info=3
+{'src':'youku', desc:'xxx', dur:33.3, pic:'xx.png'}
+
+GET /fetch?cancel=3
+{}
+

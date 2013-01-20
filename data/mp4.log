@@ -1,0 +1,261 @@
+"/www/1.mp4": Dumping meta-information...
+ "/www/1.mp4": type ftyp (ftyp)
+  "/www/1.mp4": majorBrand = isom
+  "/www/1.mp4": minorVersion = 1 (0x00000001)
+  "/www/1.mp4": <table entries suppressed>
+
+ "/www/1.mp4": type moov (moov)
+
+  "/www/1.mp4": type mvhd (moov.mvhd)
+   "/www/1.mp4": version = 0 (0x00)
+   "/www/1.mp4": flags = 0 (0x000000)
+   "/www/1.mp4": creationTime = 3425906075 (0xcc332d9b)
+   "/www/1.mp4": modificationTime = 3425906098 (0xcc332db2)
+   "/www/1.mp4": timeScale = 600 (0x00000258)
+   "/www/1.mp4": duration = 269516 (0x00041ccc)
+   "/www/1.mp4": rate = 1.000000
+   "/www/1.mp4": volume = 1.000000
+   "/www/1.mp4": reserved1 = <70 bytes>
+   "/www/1.mp4": nextTrackId = 3 (0x00000003)
+
+  "/www/1.mp4": type iods (moov.iods)
+   "/www/1.mp4": version = 0 (0x00)
+   "/www/1.mp4": flags = 0 (0x000000)
+   "/www/1.mp4": objectDescriptorId = 1 (0x001) <10 bits>
+   "/www/1.mp4": URLFlag = 0 (0x0) <1 bits>
+   "/www/1.mp4": includeInlineProfileLevelFlag = 0 (0x0) <1 bits>
+   "/www/1.mp4": reserved = 15 (0xf) <4 bits>
+   "/www/1.mp4": ODProfileLevelId = 255 (0xff)
+   "/www/1.mp4": sceneProfileLevelId = 255 (0xff)
+   "/www/1.mp4": audioProfileLevelId = 41 (0x29)
+   "/www/1.mp4": visualProfileLevelId = 21 (0x15)
+   "/www/1.mp4": graphicsProfileLevelId = 255 (0xff)
+   "/www/1.mp4": esIds
+   "/www/1.mp4": ociDescr
+   "/www/1.mp4": ipmpDescrPtr
+   "/www/1.mp4": extDescr
+
+  "/www/1.mp4": type trak (moov.trak)
+   "/www/1.mp4": type tkhd (moov.trak.tkhd)
+    "/www/1.mp4": version = 0 (0x00)
+    "/www/1.mp4": flags = 1 (0x000001)
+    "/www/1.mp4": creationTime = 3425906075 (0xcc332d9b)
+    "/www/1.mp4": modificationTime = 3425906085 (0xcc332da5)
+    "/www/1.mp4": trackId = 1 (0x00000001)
+    "/www/1.mp4": reserved1 = <4 bytes>  00 00 00 00  |....|
+    "/www/1.mp4": duration = 269400 (0x00041c58)
+    "/www/1.mp4": reserved2 = <8 bytes>  00 00 00 00 00 00 00 00  |........|
+    "/www/1.mp4": layer = 0 (0x0000)
+    "/www/1.mp4": alternate_group = 0 (0x0000)
+    "/www/1.mp4": volume = 0.000000
+    "/www/1.mp4": reserved3 = <2 bytes>  00 00  |..|
+    "/www/1.mp4": matrix = <36 bytes>
+    "/www/1.mp4": width = 640.000000
+    "/www/1.mp4": height = 360.000000
+   "/www/1.mp4": type mdia (moov.trak.mdia)
+    "/www/1.mp4": type mdhd (moov.trak.mdia.mdhd)
+     "/www/1.mp4": version = 0 (0x00)
+     "/www/1.mp4": flags = 0 (0x000000)
+     "/www/1.mp4": creationTime = 3425906075 (0xcc332d9b)
+     "/www/1.mp4": modificationTime = 3425906082 (0xcc332da2)
+     "/www/1.mp4": timeScale = 25000 (0x000061a8)
+     "/www/1.mp4": duration = 11225000 (0x00ab47a8)
+     "/www/1.mp4": language = Undetermined (0x55c4)
+     "/www/1.mp4": reserved = <2 bytes>  00 00  |..|
+    "/www/1.mp4": type hdlr (moov.trak.mdia.hdlr)
+     "/www/1.mp4": version = 0 (0x00)
+     "/www/1.mp4": flags = 0 (0x000000)
+     "/www/1.mp4": reserved1 = <4 bytes>  00 00 00 00  |....|
+     "/www/1.mp4": handlerType = vide
+     "/www/1.mp4": reserved2 = <12 bytes>  00 00 00 00 00 00 00 00 00 00 00 00  |............|
+     "/www/1.mp4": name = 109087848.mov000.h264#video - Imported with GPAC 0.4.6-DEV-rev4027
+    "/www/1.mp4": type minf (moov.trak.mdia.minf)
+     "/www/1.mp4": type vmhd (moov.trak.mdia.minf.vmhd)
+      "/www/1.mp4": version = 0 (0x00)
+      "/www/1.mp4": flags = 1 (0x000001)
+      "/www/1.mp4": reserved = <8 bytes>  00 00 00 00 00 00 00 00  |........|
+     "/www/1.mp4": type dinf (moov.trak.mdia.minf.dinf)
+      "/www/1.mp4": type dref (moov.trak.mdia.minf.dinf.dref)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": entryCount = 1 (0x00000001)
+       "/www/1.mp4": type url  (moov.trak.mdia.minf.dinf.dref.url )
+        "/www/1.mp4": version = 0 (0x00)
+        "/www/1.mp4": flags = 1 (0x000001)
+        "/www/1.mp4": location = (null)
+     "/www/1.mp4": type stbl (moov.trak.mdia.minf.stbl)
+      "/www/1.mp4": type stsd (moov.trak.mdia.minf.stbl.stsd)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": entryCount = 1 (0x00000001)
+       "/www/1.mp4": type avc1 (moov.trak.mdia.minf.stbl.stsd.avc1)
+        "/www/1.mp4": reserved1 = <6 bytes>  00 00 00 00 00 00  |......|
+        "/www/1.mp4": dataReferenceIndex = 1 (0x0001)
+        "/www/1.mp4": reserved2 = <16 bytes>  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  |................|
+        "/www/1.mp4": width = 640 (0x0280)
+        "/www/1.mp4": height = 360 (0x0168)
+        "/www/1.mp4": reserved3 = <14 bytes>  00 48 00 00 00 48 00 00 00 00 00 00 00 01  |.H...H........|
+        "/www/1.mp4": compressorName = 
+        "/www/1.mp4": reserved4 = <4 bytes>  00 18 ff ff  |....|
+        "/www/1.mp4": type avcC (moov.trak.mdia.minf.stbl.stsd.avc1.avcC)
+         "/www/1.mp4": configurationVersion = 1 (0x01)
+         "/www/1.mp4": AVCProfileIndication = 100 (0x64)
+         "/www/1.mp4": profile_compatibility = 0 (0x00)
+         "/www/1.mp4": AVCLevelIndication = 31 (0x1f)
+         "/www/1.mp4": reserved = 63 (0x3f) <6 bits>
+         "/www/1.mp4": lengthSizeMinusOne = 3 (0x3) <2 bits>
+         "/www/1.mp4": reserved1 = 7 (0x7) <3 bits>
+         "/www/1.mp4": numOfSequenceParameterSets = 1 (0x01) <5 bits>
+         "/www/1.mp4": <table entries suppressed>
+         "/www/1.mp4": numOfPictureParameterSets = 1 (0x01)
+         "/www/1.mp4": <table entries suppressed>
+        "/www/1.mp4": type btrt (moov.trak.mdia.minf.stbl.stsd.avc1.btrt)
+         "/www/1.mp4": bufferSizeDB = 63897 (0x0000f999)
+         "/www/1.mp4": avgBitrate = 1847528 (0x001c30e8)
+         "/www/1.mp4": maxBitrate = 748928 (0x000b6d80)
+      "/www/1.mp4": type stts (moov.trak.mdia.minf.stbl.stts)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": entryCount = 1 (0x00000001)
+       "/www/1.mp4": <table entries suppressed>
+      "/www/1.mp4": type ctts (moov.trak.mdia.minf.stbl.ctts)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": entryCount = 2102 (0x00000836)
+       "/www/1.mp4": <table entries suppressed>
+      "/www/1.mp4": type stss (moov.trak.mdia.minf.stbl.stss)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": entryCount = 177 (0x000000b1)
+       "/www/1.mp4": <table entries suppressed>
+      "/www/1.mp4": type stsc (moov.trak.mdia.minf.stbl.stsc)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": entryCount = 427 (0x000001ab)
+       "/www/1.mp4": <table entries suppressed>
+      "/www/1.mp4": type stsz (moov.trak.mdia.minf.stbl.stsz)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": sampleSize = 0 (0x00000000)
+       "/www/1.mp4": sampleCount = 11225 (0x00002bd9)
+       "/www/1.mp4": <table entries suppressed>
+      "/www/1.mp4": type stco (moov.trak.mdia.minf.stbl.stco)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": entryCount = 458 (0x000001ca)
+       "/www/1.mp4": <table entries suppressed>
+
+  "/www/1.mp4": type trak (moov.trak)
+   "/www/1.mp4": type tkhd (moov.trak.tkhd)
+    "/www/1.mp4": version = 0 (0x00)
+    "/www/1.mp4": flags = 1 (0x000001)
+    "/www/1.mp4": creationTime = 3425906082 (0xcc332da2)
+    "/www/1.mp4": modificationTime = 3425906085 (0xcc332da5)
+    "/www/1.mp4": trackId = 2 (0x00000002)
+    "/www/1.mp4": reserved1 = <4 bytes>  00 00 00 00  |....|
+    "/www/1.mp4": duration = 269516 (0x00041ccc)
+    "/www/1.mp4": reserved2 = <8 bytes>  00 00 00 00 00 00 00 00  |........|
+    "/www/1.mp4": layer = 0 (0x0000)
+    "/www/1.mp4": alternate_group = 0 (0x0000)
+    "/www/1.mp4": volume = 1.000000
+    "/www/1.mp4": reserved3 = <2 bytes>  00 00  |..|
+    "/www/1.mp4": matrix = <36 bytes>
+    "/www/1.mp4": width = 0.000000
+    "/www/1.mp4": height = 0.000000
+   "/www/1.mp4": type mdia (moov.trak.mdia)
+    "/www/1.mp4": type mdhd (moov.trak.mdia.mdhd)
+     "/www/1.mp4": version = 0 (0x00)
+     "/www/1.mp4": flags = 0 (0x000000)
+     "/www/1.mp4": creationTime = 3425906082 (0xcc332da2)
+     "/www/1.mp4": modificationTime = 3425906085 (0xcc332da5)
+     "/www/1.mp4": timeScale = 48000 (0x0000bb80)
+     "/www/1.mp4": duration = 21561344 (0x01490000)
+     "/www/1.mp4": language = Undetermined (0x55c4)
+     "/www/1.mp4": reserved = <2 bytes>  00 00  |..|
+    "/www/1.mp4": type hdlr (moov.trak.mdia.hdlr)
+     "/www/1.mp4": version = 0 (0x00)
+     "/www/1.mp4": flags = 0 (0x000000)
+     "/www/1.mp4": reserved1 = <4 bytes>  00 00 00 00  |....|
+     "/www/1.mp4": handlerType = soun
+     "/www/1.mp4": reserved2 = <12 bytes>  00 00 00 00 00 00 00 00 00 00 00 00  |............|
+     "/www/1.mp4": name = 109087848.mov.aac#audio - Imported with GPAC 0.4.6-DEV-rev4027
+    "/www/1.mp4": type minf (moov.trak.mdia.minf)
+     "/www/1.mp4": type smhd (moov.trak.mdia.minf.smhd)
+      "/www/1.mp4": version = 0 (0x00)
+      "/www/1.mp4": flags = 0 (0x000000)
+      "/www/1.mp4": reserved = <4 bytes>  00 00 00 00  |....|
+     "/www/1.mp4": type dinf (moov.trak.mdia.minf.dinf)
+      "/www/1.mp4": type dref (moov.trak.mdia.minf.dinf.dref)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": entryCount = 1 (0x00000001)
+       "/www/1.mp4": type url  (moov.trak.mdia.minf.dinf.dref.url )
+        "/www/1.mp4": version = 0 (0x00)
+        "/www/1.mp4": flags = 1 (0x000001)
+        "/www/1.mp4": location = (null)
+     "/www/1.mp4": type stbl (moov.trak.mdia.minf.stbl)
+      "/www/1.mp4": type stsd (moov.trak.mdia.minf.stbl.stsd)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": entryCount = 1 (0x00000001)
+       "/www/1.mp4": type mp4a (moov.trak.mdia.minf.stbl.stsd.mp4a)
+        "/www/1.mp4": reserved1 = <6 bytes>  00 00 00 00 00 00  |......|
+        "/www/1.mp4": dataReferenceIndex = 1 (0x0001)
+        "/www/1.mp4": soundVersion = 0 (0x0000)
+        "/www/1.mp4": reserved2 = <6 bytes>  00 00 00 00 00 00  |......|
+        "/www/1.mp4": channels = 2 (0x0002)
+        "/www/1.mp4": sampleSize = 16 (0x0010)
+        "/www/1.mp4": compressionId = 0 (0x0000)
+        "/www/1.mp4": packetSize = 0 (0x0000)
+        "/www/1.mp4": timeScale = 3145728000 (0xbb800000)
+        "/www/1.mp4": type esds (moov.trak.mdia.minf.stbl.stsd.mp4a.esds)
+         "/www/1.mp4": version = 0 (0x00)
+         "/www/1.mp4": flags = 0 (0x000000)
+         "/www/1.mp4": ESID = 0 (0x0000)
+         "/www/1.mp4": streamDependenceFlag = 0 (0x0) <1 bits>
+         "/www/1.mp4": URLFlag = 0 (0x0) <1 bits>
+         "/www/1.mp4": OCRstreamFlag = 0 (0x0) <1 bits>
+         "/www/1.mp4": streamPriority = 0 (0x00) <5 bits>
+         "/www/1.mp4": decConfigDescr
+          "/www/1.mp4": objectTypeId = 64 (0x40)
+          "/www/1.mp4": streamType = 5 (0x05) <6 bits>
+          "/www/1.mp4": upStream = 0 (0x0) <1 bits>
+          "/www/1.mp4": reserved = 1 (0x1) <1 bits>
+          "/www/1.mp4": bufferSizeDB = 507 (0x0001fb) <24 bits>
+          "/www/1.mp4": maxBitrate = 168984 (0x00029418)
+          "/www/1.mp4": avgBitrate = 125760 (0x0001eb40)
+          "/www/1.mp4": decSpecificInfo
+           "/www/1.mp4": info = <2 bytes>  11 90  |..|
+          "/www/1.mp4": profileLevelIndicationIndexDescr
+         "/www/1.mp4": slConfigDescr
+          "/www/1.mp4": predefined = 2 (0x02)
+         "/www/1.mp4": ipiPtr
+         "/www/1.mp4": ipIds
+         "/www/1.mp4": ipmpDescrPtr
+         "/www/1.mp4": langDescr
+         "/www/1.mp4": qosDescr
+         "/www/1.mp4": regDescr
+         "/www/1.mp4": extDescr
+      "/www/1.mp4": type stts (moov.trak.mdia.minf.stbl.stts)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": entryCount = 1 (0x00000001)
+       "/www/1.mp4": <table entries suppressed>
+      "/www/1.mp4": type stsc (moov.trak.mdia.minf.stbl.stsc)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": entryCount = 3 (0x00000003)
+       "/www/1.mp4": <table entries suppressed>
+      "/www/1.mp4": type stsz (moov.trak.mdia.minf.stbl.stsz)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": sampleSize = 0 (0x00000000)
+       "/www/1.mp4": sampleCount = 21056 (0x00005240)
+       "/www/1.mp4": <table entries suppressed>
+      "/www/1.mp4": type stco (moov.trak.mdia.minf.stbl.stco)
+       "/www/1.mp4": version = 0 (0x00)
+       "/www/1.mp4": flags = 0 (0x000000)
+       "/www/1.mp4": entryCount = 458 (0x000001ca)
+       "/www/1.mp4": <table entries suppressed>
+
+ "/www/1.mp4": type mdat (mdat)

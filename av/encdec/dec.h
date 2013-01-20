@@ -1,6 +1,7 @@
 #pragma once 
 
 void *mp4dec_open(char *fname);
+void mp4dec_set(void *_m, char *opt);
 void mp4dec_loglevel(int lev);
 float mp4dec_dur(void *h);
 float mp4dec_pos(void *h);

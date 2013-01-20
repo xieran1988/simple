@@ -23,6 +23,8 @@ typedef struct {
 	float samptpos, samphpos;
 	int samph, sampt, sampcnt;
 
+	char *opt;
+
 	int vcnt, acnt;
 } mp4dec_t;
 
@@ -165,6 +167,14 @@ static void _prefetch_audio(mp4dec_t *m, float pos)
 			break;
 	}
 	dbp(0, "  prefetch done\n");
+}
+
+void mp4dec_set(void *_m, char *opt)
+{
+	mp4dec_t *m = (mp4dec_t *)_m;
+
+	if (strstr(opt, "novideo"))
+		m->st_video = NULL;
 }
 
 void *mp4dec_open(char *fname)
@@ -352,6 +362,8 @@ void mp4dec_seek_precise(void *_m, float pos)
 		ts = (int64_t)(pos / m->audio_time_base);
 		index = m->st_audio->index;
 		avformat_seek_file(m->ifc, index, 0, ts, ts, 0);
+		_prefetch_audio(m, pos+1);
+		avformat_seek_file(m->ifc, index, 0, ts, ts, 0);
 		m->pos = pos;
 	}
 }
@@ -401,12 +413,14 @@ int mp4dec_read_frame(void *_m,
 		float start = m->pos;
 		float end = m->pos + 1./25;
 		while (!m->sampcnt || m->sampos[m->sampt%SAMPMAX] < end)
-			if (_decode_audio_video_frame(m, 2, 2))
-				return 1;
+			if (_decode_audio_video_frame(m, 2, 2)) {
+				r = 1;
+				goto ret;
+			}
 		_fill_samples(m, start, end, _sample, _cnt);
 		m->pos = end;
 		dbp(0, "  samples [%.2f,%.2f] %d\n", start, end, *_cnt);
-		return 0;
+		r = 0;
 	}
 
 	if (m->st_audio && m->st_video && _sample) {
@@ -419,12 +433,13 @@ int mp4dec_read_frame(void *_m,
 		memcpy(_sample, sample, sizeof(sample));
 		*_cnt = cnt;
 		m->acnt += cnt;
-		return 0;
+		r = 0;
 	}
 
 	dbp(0, "  apos %.2lf vpos %.2lf\n",
 		 m->vcnt/25., m->acnt*1024/44100.);
 
-	return 1;
+ret:
+	return r;
 }
 

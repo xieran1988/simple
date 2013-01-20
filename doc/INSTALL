@@ -1,0 +1,4 @@
+
+ln -s pm SystemPerlModulePath
+Add bin to $PATH
+

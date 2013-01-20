@@ -1,0 +1,81 @@
+#!/usr/bin/perl
+
+use POSIX ();
+
+sub getper {
+	for $i (split /\x0d/, `tail -1 @_[0] 2>/dev/null`) {
+		next if $i eq '';
+		@a = $i =~ /(\d+)/g;
+		$per = @a[0];
+	}
+	$per;
+}
+
+sub fetch {
+	$pre = "/tmp/youku";
+	$dir = `mktemp -d $pre.XXXXXX`;
+	chomp $dir;
+	($suf) = $dir =~ /(......)$/;
+	$cmd = "cd $dir && nohup fetch-youku '$val' 2>&1 >nohup.out &";
+	system($cmd) == 0 or die "error_start_fetch";
+
+	$SIG{INT} = sub {
+		system("kill `cat $dir/pid`");
+		print "quit\n";
+		exit;
+	};
+}
+
+sub gotsize {
+	chomp($s = `du -sh $dir/a.ts 2>/dev/null`);
+	($size) = $s =~ /(\S+)/;
+	$size || '0K';
+}
+
+sub query {
+	
+}
+
+($op, $val) = @ARGV;
+
+if ($op eq 'nohup') {
+	fetch;
+	print $suf;
+	exit 0;
+}
+
+if ($op eq 'fetch') {
+	fetch;
+	print "$dir\n";
+
+	$p = 0.0;
+	while (1) {
+		chomp($t = `tail -1 $dir/nohup.out 2>/dev/null`);
+		($stat, $start, $cur, $dur) = split / /, $t;
+		last if ($stat =~ /^(done|error)/);
+		$size = gotsize;
+		printf "%.2f%% $size $stat\n", $p*100;
+		if ($stat =~ /^fetching_ts/) {
+			$per = getper "$dir/progress2";
+			$p = ($start + $cur*$per/100)/$dur;
+		}
+		sleep 1;
+	}
+	print "$stat\n";
+	exit 0;
+}
+
+if (!$op) {
+	$p = `basename $0`;
+	chomp $p;
+	print "Usage: \n";
+	print "    $p nohup youku_url\n";
+	print "    $p fetch youku_url\n";
+	print "    $p info id\n";
+	print "    $p query id\n";
+	print "    $p cancel id\n";
+	print "Example: \n";
+	print "    $p nohup http://v.youku.com/v_show/id_XNTA0MjE3ODE2.html?f=18873171\n";
+	exit;
+}
+

@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 {
 	char *path = "/tmp/out.png";
 
-	int w = 320, h = 40;
+	int w = 120, h = 40;
 	uint32_t *data = (uint32_t *)malloc(w*h*4);
 	memset(data, 0, w*h*4);
 
@@ -16,23 +16,38 @@ int main(int argc, char *argv[])
 	int cnt;
 
 	void *dec = mp4dec_open("/vid/1.aac");
-	float dur = mp4dec_dur(dec);
 
-	printf("dur: %.2f\n", dur);
+	mp4dec_set(dec, "novideo");
+
+	float dur = 0;
+	float max = -1e6, min = 1e6, v;
+	while (1) {
+		dur = mp4dec_pos(dec);
+		if (mp4dec_read_frame(dec, NULL, NULL, (void **)samples, &cnt))
+			break;
+		if (cnt) {
+			v = samples[0][0];
+			if (v < min)
+				min = v;
+			if (v > max)
+				max = v;
+		}
+	}
+
+	mp4dec_seek_precise(dec, 0);
+	printf("dur: %.2f [%.2f,%.2f]\n", dur, min, max);
 
 	int x, y, i;
 	while (1) {
 		float pos = mp4dec_pos(dec);
 		if (mp4dec_read_frame(dec, NULL, NULL, (void **)samples, &cnt))
 			break;
-		if (pos > dur)
-			break;
 		if (cnt) {
+			v = samples[0][0];
 			x = w*pos/dur;
-			if (x >= w)
-				x = w;
-			y = h*(1+samples[0][0]);
-			printf("x,y=%d,%d pos,dur=%.2f/%.2f\n", x, y, pos, dur);
+			float fh = (v-min)/(max-min);
+			y = h*fh;
+			//printf("x,y=%d,%d pos,dur=%.2f/%.2f\n", x, y, pos, dur);
 			for (i = y; i < h; i++)
 				data[i*w+x] = 0xffffffff;
 		}

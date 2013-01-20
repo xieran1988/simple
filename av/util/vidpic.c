@@ -54,8 +54,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	strcat(cmd, "-geometry +1+0 -tile 6x1 -resize 800x70 ");	
+	char buf[1024];
+	sprintf(buf, "-geometry +1+0 -tile %dx1 -resize 400x40 ", nr);	
+	strcat(cmd, buf);
 	strcat(cmd, output);
+	printf("exec: %s\n", cmd);
 	system(cmd);
 
 	for (i = 0; i < nr; i++) {

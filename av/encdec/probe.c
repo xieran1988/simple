@@ -23,6 +23,8 @@ int main(int argc, char *argv[])
 	avformat_find_stream_info(ifc, NULL);
 	av_dump_format(ifc, 0, filename, 0);
 
+//	printf("time_base %lld\n", pkt.stream_index, pkt.pts);
+
 	while (1) {
 		AVPacket pkt;
 		i = av_read_frame(ifc, &pkt);

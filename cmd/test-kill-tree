@@ -1,0 +1,9 @@
+#!/usr/bin/perl
+
+use Pixies::Utils;
+
+exit_kill_child;
+
+print "$$\n";
+system("curl http://www.kernel.org/pub/linux/kernel/v3.0/linux-3.7.3.tar.bz2 > /tmp/a");
+

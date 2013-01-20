@@ -1,0 +1,4 @@
+#!/bin/bash
+
+nohup godoc -http=:6060 >/dev/null &
+

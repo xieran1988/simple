@@ -1,19 +1,21 @@
 
 include ../../top.mk
 
-all: a.a genpic test wavpic 
+all: a.a test \
+	$T/bin/vidpic \
+	$T/bin/wavpic 
 
 a.a: yuv.o yuvjpg.o a.o
 	$A $@ $^
 
-wavpic: wavpic.o
+$T/bin/wavpic: wavpic.o
 	${CC} -g -o $@ $^ $T/av/encdec/a.a ${AVLIB} ${JPGLIB}
 
-genpic: genpic.o yuvjpg.o
+$T/bin/vidpic: vidpic.o yuvjpg.o
 	${CC} -o $@ $^ $T/av/encdec/a.a ${AVLIB} ${JPGLIB}
 
 test: yuvjpg.o yuv.o test.o
 	${CC} -o $@ $^ ${JPGLIB}
 
-clean: OBJ += wavpic
+clean: OBJ += $T/bin/wavpic $T/bin/vidpic
 

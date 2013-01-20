@@ -1,0 +1,5 @@
+#!/bin/bash
+
+rm -rf /www/hls/*.ts
+rm -rf /www/hls/1.m3u8
+

@@ -1,0 +1,80 @@
+#!/usr/bin/perl
+
+use Pixies::Utils;
+
+$url = $ARGV[0];
+$url or die "error_url_must_be_specified";
+
+exit_kill_child;
+`echo $$ > pid`;
+
+print "fetching_index\n";
+
+`> err.log`;
+
+$index = "index";
+system("curl '$url' -o $index 2>>err.log") == 0
+	or die "error_fetching_index $url $?";
+
+open L, "$index";
+while (<L>) {
+	$vid = $1 if /videoId.*'([^']+)'/;
+	$vid2 = $1 if /videoId2.*'([^']+)'/;
+	$desc = $1 if /<meta name="title" content="([^"]+)"/;
+}
+close L;
+
+($vid && $vid2 && $desc) 
+	or die "error_get_video_info";
+
+open F, ">desc"; print F "$desc"; close F;
+
+$date = `date +%s`;
+chomp $date;
+# hd2>mp4>flv>3g
+$m3u = "http://www.youku.com/player/".
+			 "getM3U8/vid/$vid/type/mp4/ts/$date/v.m3u8";
+print "fetching_m3u8 $m3u\n";
+
+$cmd = "curl '$m3u' -o a.m3u8 2>>err.log";
+system($cmd) == 0 or die "error_fetching_m3u8 $?";
+
+$dur = 0.0;
+open F, "a.m3u8";
+while (<F>) {
+	push @ts, $1 if /^(http\S+)\s+$/;
+	if (/^#EXTINF:([0-9\.]+)/) {
+		push @durs, $1;
+		$dur += $1;
+	}
+}
+close F;
+
+$cnt = scalar @ts;
+
+$start = 0.0;
+`> a.ts`;
+for ($i = 0; $i < $cnt; $i++) {
+	$url = @ts[$i];
+	$cur = @durs[$i];
+	print "fetching_ts $start $cur $dur $i $cnt\n";
+	$cmd = "curl '$url' 2>progress2 >> a.ts";
+	system($cmd) == 0 or die "error_fetching_ts $?";
+	$start += $cur;
+}
+
+print "avconv\n";
+system("avconv -i a.ts -c copy -y a.mp4 2>>err.log") == 0 or die 'error_avconv';
+print "done\n";
+
+#$url2 = "http://3g.youku.com/pvs?id=$vid2&format=3gphd";
+#print "url2: $url2\n";
+
+#$cmd = "curl -L '$url2' -o a.mp4 2>progress";
+#system($cmd) == 0 or die "curl video failed: $?";
+
+#$t = time();
+#$url = "www.youku.com/player/getM3U8/vid/$vid/type/hd2/ts/$t/v.m3u8";
+#print "url $url\n";
+#print "url2 $url2\n";
+
